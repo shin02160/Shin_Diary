@@ -14,4 +14,4 @@ export type CollectionResult =
  | { state: 'unconfigured' }
  | { state: 'failed'; message: string }
  | { state: 'ready'; items: CollectionItem[]; truncated: boolean };
-export interface NotionCollections { trips: CollectionResult; itinerary: CollectionResult; performances: CollectionResult }
+export interface NotionCollections { trips: CollectionResult; performances: CollectionResult }

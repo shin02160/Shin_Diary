@@ -3,9 +3,8 @@ async page => {
  const origin = await page.evaluate(() => location.origin);
  const trips = { state: 'ready', items: [{ id: 'trip', title: '테스트 여행', start: '2027-02-05', end: '2027-02-08', location: '상하이', url: 'https://www.notion.so/trip' }], truncated: false };
  const performances = { state: 'ready', items: [{ id: 'concert', title: '테스트 공연', start: '2026-11-06', location: '서울', url: 'https://www.notion.so/concert' }], truncated: false };
- const itinerary = { state: 'unconfigured' };
  await page.route('**/api/notion/archive', route => route.fulfill({ json: { activities: [], entries: [] } }));
- await page.route('**/api/notion/collections', route => route.fulfill({ json: { trips, performances, itinerary } }));
+ await page.route('**/api/notion/collections', route => route.fulfill({ json: { trips, performances } }));
  const routes = ['/', '/explore', '/capture', '/calendar', '/more', '/wiki', '/settings'];
  for (const width of [320, 375, 390, 430, 768, 1024, 1440]) {
   await page.setViewportSize({ width, height: 900 });
@@ -45,7 +44,7 @@ async page => {
  await page.getByRole('button', { name: '목록 보기', exact: true }).press('Enter');
  if (!(await page.locator('.universe-list').count())) throw Error('keyboard list toggle');
  const search = page.getByRole('searchbox', { name: '제목, 장소, 태그 검색' });
- await search.fill('상하이');
+ await search.fill('여행');
  await page.getByText('조건에 맞는 기록이 없어요.').waitFor();
  await page.getByRole('link', { name: '기록과 문서 검색', exact: true }).press('Enter');
  await page.waitForURL('**/explore?search=1');

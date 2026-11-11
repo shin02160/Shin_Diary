@@ -8,7 +8,7 @@ export interface CatalogItem {
  key: string;
  kind: CatalogKind;
  title: string;
- type: '여행' | '여행 일정' | '공연' | '기록' | '활동';
+ type: '여행' | '공연' | '기록' | '활동';
  start?: string;
  end?: string;
  updated?: string;
@@ -25,7 +25,7 @@ const kinds = { Travel: 'travel', Concert: 'concert', Daily: 'daily', Projects: 
 
 export function buildCatalog(archive?: { activities: Activity[]; entries: Entry[] }, collections?: NotionCollections): CatalogItem[] {
  const result: CatalogItem[] = [];
- for (const [source, kind, type] of [['trips', 'travel', '여행'], ['itinerary', 'travel', '여행 일정'], ['performances', 'concert', '공연']] as const) {
+ for (const [source, kind, type] of [['trips', 'travel', '여행'], ['performances', 'concert', '공연']] as const) {
   const group = collections?.[source];
   if (group?.state !== 'ready') continue;
   for (const item of group.items) result.push({

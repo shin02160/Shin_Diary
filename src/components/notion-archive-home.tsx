@@ -49,7 +49,7 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
  const items = buildCatalog(archiveData, collectionData);
  const loading = (remote ? !archive : !local.ready) || !collections;
  const failedCollections = Object.entries(collectionData ?? {}).filter(([, value]) => value.state === 'failed');
- const sourceNames = { trips: '여행', itinerary: '여행 일정', performances: '공연' } as const;
+ const sourceNames = { trips: '여행', performances: '공연' } as const;
  const errors = [
   archive && 'error' in archive ? archive.error : '',
   collections && 'error' in collections ? collections.error : '',

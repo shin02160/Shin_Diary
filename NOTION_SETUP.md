@@ -129,4 +129,4 @@ Vercel의 서버 환경변수에 DIARY_SITE_LOCK=true, DIARY_NOTION_READ_ONLY=tr
 
 ## 메인 보관함에 여행·공연 표시
 
-Diary Notion 통합에 여행 마스터, 여행 일정, 공연 DB의 읽기 권한을 부여합니다. 서버에 각 데이터 소스 ID를 NOTION_TRAVEL_TRIPS_SOURCE_ID, NOTION_TRAVEL_SCHEDULE_SOURCE_ID, NOTION_PERFORMANCES_SOURCE_ID로 설정하면 읽기 전용 메인 화면에 표시됩니다. Vercel에서는 Production에 저장하고 다시 배포합니다. 여행·공연 원본의 항목은 Diary DB에 복사하지 않습니다.
+Diary Notion 통합에 여행 마스터와 공연 DB의 읽기 권한을 부여합니다. 서버에 각 데이터 소스 ID를 NOTION_TRAVEL_TRIPS_SOURCE_ID와 NOTION_PERFORMANCES_SOURCE_ID로 설정하면 읽기 전용 메인 화면에 표시됩니다. Vercel에서는 Production에 저장하고 다시 배포합니다. 여행·공연 원본의 항목은 Diary DB에 복사하지 않습니다.

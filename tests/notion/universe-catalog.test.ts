@@ -13,7 +13,6 @@ test('catalog keeps real sources distinct and filters by displayed metadata', ()
  const collections: NotionCollections = {
   trips: { state: 'ready', truncated: false, items: [{ id: 'shared', title: '여행', start: '2027-02-05',
    location: '상하이', url: 'https://www.notion.so/trip' }] },
-  itinerary: { state: 'failed', message: '조회 실패' },
   performances: { state: 'ready', truncated: false, items: [{ id: 'shared', title: '공연', start: '2026-11-06',
    updatedAt: '2026-11-13T03:00:00Z', detail: '아티스트', url: 'https://www.notion.so/concert' }] },
  };
