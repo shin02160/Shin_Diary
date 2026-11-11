@@ -124,3 +124,9 @@ Node.js 서버와 영속 SQLite 디렉터리를 제공하는 호스팅에 배포
 ## 접속 시 사이트 잠금
 
 Vercel의 서버 환경변수에 DIARY_SITE_LOCK=true, DIARY_NOTION_READ_ONLY=true, 실제 HTTPS 주소 DIARY_APP_ORIGIN, DIARY_PASSWORD, DIARY_SESSION_SECRET을 설정하고 다시 배포합니다. 읽기 전용 사이트 잠금에는 숫자 4자리 또는 16자 이상의 비밀번호를 사용할 수 있습니다. 4자리 비밀번호를 쓸 때 Vercel Firewall에서 /api/site/session 요청에 별도 속도 제한을 설정하세요. 앱 자체의 시도 횟수 제한은 실행 인스턴스별입니다.
+
+읽기 전용 모드의 메인 화면은 Activities와 Entries를 Notion에서 불러와 표시합니다. 위키 시작 페이지 ID를 비워 두면 개인 위키 메뉴에서도 같은 화면을 볼 수 있습니다. 특정 Notion 문서를 열고 싶을 때만 NOTION_WIKI_PAGE_ID를 설정하세요.
+
+## 메인 보관함에 여행·공연 표시
+
+Diary Notion 통합에 여행 마스터, 여행 일정, 공연 DB의 읽기 권한을 부여합니다. 서버에 각 데이터 소스 ID를 NOTION_TRAVEL_TRIPS_SOURCE_ID, NOTION_TRAVEL_SCHEDULE_SOURCE_ID, NOTION_PERFORMANCES_SOURCE_ID로 설정하면 읽기 전용 메인 화면에 표시됩니다. Vercel에서는 Production에 저장하고 다시 배포합니다. 여행·공연 원본의 항목은 Diary DB에 복사하지 않습니다.
