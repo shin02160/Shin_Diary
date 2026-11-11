@@ -1,0 +1,134 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions -- Function consumed by playwright-cli. */
+async page => {
+ page.setDefaultTimeout(10000);
+ const origin = await page.evaluate(() => location.origin);
+ const checks = []; const errors = [];
+ page.on('pageerror', e => errors.push(e.message));
+ const check = (ok, name) => { if (!ok) throw new Error(name); checks.push(name); };
+ const go = async path => { await page.goto(origin + path); await page.locator('main h1').waitFor(); };
+ const record = () => page.getByLabel('오늘의 기록', { exact: false });
+ const saveRecord = async () => { await page.getByRole('button', { name: '기록 저장', exact: true }).click(); await page.waitForURL('**/memories?saved=1'); await page.locator('.entry-card').first().waitFor(); };
+ const archive = () => page.evaluate(() => JSON.parse(localStorage.getItem('mlu.archive.v1')));
+ try {
+ await go('/');
+ await page.evaluate(() => { localStorage.removeItem('mlu.archive.v1'); sessionStorage.removeItem('mlu.capture.draft.v1'); });
+ await go('/capture');
+ await record().fill('제목 없이 남긴 독립 기록');
+ await page.reload(); await record().waitFor();
+ check(await record().inputValue() === '제목 없이 남긴 독립 기록', 'Capture draft survives refresh');
+ await page.getByRole('link', { name: '초안 남겨두고 나가기' }).click(); await page.waitForURL('**/memories');
+ await go('/capture'); check(await record().inputValue() === '제목 없이 남긴 독립 기록', 'Capture draft survives navigation');
+ await saveRecord();
+ let data = await archive(); let own = data.entries.filter(e => !e.isSample);
+ check(own.length === 1 && !own[0].title && !own[0].activityId, 'One-line independent entry saved');
+ await page.reload(); await page.getByText('제목 없이 남긴 독립 기록', { exact: true }).first().waitFor();
+ check((await archive()).entries.filter(e => !e.isSample).length === 1, 'Entry survives refresh');
+ await page.getByLabel('샘플 함께 보기').uncheck();
+ check(await page.locator('.entry-card').count() === 1, 'User records can be separated from samples');
+ await go('/activities/new');
+ await page.getByLabel('활동 이름').fill('테스트 산책 활동');
+ await page.getByRole('combobox', { name: '카테고리', exact: true }).selectOption('Travel');
+ await page.getByRole('combobox', { name: '활동 상태', exact: true }).selectOption('active');
+ await page.getByLabel('마지막으로 한 일', { exact: true }).fill('동네 코스를 골랐다');
+ await page.getByLabel('다음에 할 일', { exact: true }).fill('카메라 챙기기');
+ await page.getByLabel('재개 메모', { exact: true }).fill('서두르지 않기\n물 한 병 챙기기');
+ await page.getByLabel('참고 링크').fill('https://example.com/walk');
+ await page.getByRole('button', { name: '활동 저장', exact: true }).click();
+ await page.getByRole('heading', { level: 1, name: '테스트 산책 활동', exact: true }).waitFor();
+ const id = page.url().split('/').pop();
+ check(!!id && id !== 'new', 'Activity created with persistent ID');
+ await page.getByRole('link', { name: '이 활동에 기록 남기기' }).click();
+ await page.waitForURL('**/capture?activity=*'); await record().waitFor();
+ check(await page.getByLabel('연결할 활동').inputValue() === id, 'Activity link preselects capture association');
+ check(await record().inputValue() === '', 'Successful save clears capture draft');
+ await record().fill('활동에 연결한 경험 기록'); await saveRecord();
+ check((await archive()).entries.some(e => e.activityId === id && e.content === '활동에 연결한 경험 기록'), 'Linked entry persisted');
+ await go('/activities/' + id);
+ check(await page.getByText('활동에 연결한 경험 기록', { exact: true }).first().isVisible(), 'Activity detail shares entry data');
+ await go('/'); await page.getByRole('heading', { name: '활동에 연결한 경험 기록' }).waitFor();
+ check(true, 'Home displays saved entry');
+ await go('/calendar');
+ check(await page.getByRole('heading', { name: '활동에 연결한 경험 기록' }).isVisible(), 'Calendar displays saved entry');
+ const setStatus = async (status, archived) => {
+  await go('/activities/' + id + '/edit');
+  await page.getByRole('combobox', { name: '활동 상태', exact: true }).selectOption(status);
+  await page.getByLabel('아카이브에 보관', { exact: true }).setChecked(archived);
+  await page.getByRole('button', { name: '활동 저장', exact: true }).click();
+  await page.waitForURL(origin + '/activities/' + id);
+  await page.getByRole('link', { name: '활동 편집·상태 변경' }).waitFor();
+ };
+ await setStatus('parked', false);
+ check(!!(await archive()).activities.find(a => a.id === id).parkedAt, 'Parking records date');
+ await go('/continue'); await page.getByRole('heading', { name: '테스트 산책 활동', exact: true }).waitFor();
+ check((await page.locator('.activity-card').filter({ hasText: '테스트 산책 활동' }).innerText()).includes('카메라 챙기기'), 'Continue shows resume step');
+ await page.reload(); await page.getByRole('heading', { name: '테스트 산책 활동', exact: true }).waitFor();
+ check(true, 'Resume context survives reconnect');
+ await setStatus('active', false); check((await archive()).activities.find(a => a.id === id).lifecycleStatus === 'active', 'Parked activity resumes');
+ await setStatus('satisfied', false);
+ check((await archive()).activities.find(a => a.id === id).nextStep === '카메라 챙기기', 'Satisfaction allows remaining work');
+ await go('/continue'); check(await page.getByRole('heading', { name: '테스트 산책 활동', exact: true }).count() === 0, 'Satisfied activity leaves Continue');
+ await setStatus('active', true);
+ data = await archive(); check(data.activities.find(a => a.id === id).isArchived && data.activities.find(a => a.id === id).lifecycleStatus === 'active', 'Archive independent from lifecycle');
+ await go('/collection'); await page.getByLabel('아카이브 보기').check();
+ check(await page.getByRole('heading', { name: '테스트 산책 활동', exact: true }).isVisible(), 'Archived activity remains discoverable');
+ await setStatus('active', false);
+ const other = await page.context().newPage();
+ try {
+  await go('/activities/' + id + '/edit');
+  await page.getByLabel('활동 이름').fill('현재 탭의 미저장 이름');
+  await other.goto(origin + '/activities/' + id + '/edit');
+  await other.getByLabel('활동 이름').fill('다른 탭에서 수정한 이름');
+  await other.getByRole('button', { name: '활동 저장', exact: true }).click();
+  await other.waitForURL(origin + '/activities/' + id);
+  await page.getByRole('button', { name: '활동 저장', exact: true }).click();
+  await page.getByRole('alert').filter({ hasText: '다른 탭' }).waitFor();
+  check(await page.getByLabel('활동 이름').inputValue() === '현재 탭의 미저장 이름', 'Edit conflict keeps local input');
+  check((await archive()).activities.find(a => a.id === id).name === '다른 탭에서 수정한 이름', 'Edit conflict preserves remote save');
+  await go('/capture'); await other.goto(origin + '/capture');
+  await record().fill('동시 기록 A'); await other.getByLabel('오늘의 기록').fill('동시 기록 B');
+  await Promise.all([page.getByRole('button', { name: '기록 저장', exact: true }).click(), other.getByRole('button', { name: '기록 저장', exact: true }).click()]);
+  await Promise.all([page.waitForURL('**/memories?saved=1'), other.waitForURL('**/memories?saved=1')]);
+  data = await archive(); check(data.entries.some(e => e.content === '동시 기록 A') && data.entries.some(e => e.content === '동시 기록 B'), 'Concurrent tab saves preserve both entries');
+ } finally { await other.close(); }
+ await go('/capture'); await record().fill('저장 실패 후 재시도하는 기록');
+ await page.evaluate(() => { window.__originalSet = Storage.prototype.setItem; Storage.prototype.setItem = function(key, value) { if (key === 'mlu.archive.v1') throw new DOMException('Test quota', 'QuotaExceededError'); return window.__originalSet.call(this, key, value); }; });
+ await page.getByRole('button', { name: '기록 저장', exact: true }).click();
+ await page.getByRole('alert').filter({ hasText: '저장하지 못했습니다' }).waitFor();
+ check(await record().inputValue() === '저장 실패 후 재시도하는 기록', 'Storage failure retains input');
+ check(!(await archive()).entries.some(e => e.content === '저장 실패 후 재시도하는 기록'), 'Failed save does not report persistence');
+ await page.evaluate(() => { Storage.prototype.setItem = window.__originalSet; }); await saveRecord();
+ check((await archive()).entries.filter(e => e.content === '저장 실패 후 재시도하는 기록').length === 1, 'Retry commits once');
+ await go('/capture'); await record().fill('<img src=x onerror="window.__xss=true">'); await saveRecord();
+ check(await page.evaluate(() => !window.__xss && !document.querySelector('main img')), 'Record content rendered as text');
+ await go('/activities/' + id + '/edit'); await page.getByLabel('참고 링크').fill('javascript:alert(1)');
+ await page.getByRole('button', { name: '활동 저장', exact: true }).click();
+ await page.getByRole('alert').filter({ hasText: 'http 또는 https' }).waitFor();
+ check(true, 'Unsafe reference URL rejected');
+ await go('/settings');
+ const downloadPromise = page.waitForEvent('download'); await page.getByRole('button', { name: '저장 데이터 백업', exact: true }).click();
+ const download = await downloadPromise; check(download.suggestedFilename() === 'my-little-universe-backup.json', 'JSON backup download');
+ const valid = await page.evaluate(() => localStorage.getItem('mlu.archive.v1'));
+ await page.evaluate(() => localStorage.setItem('mlu.archive.v1', '{broken-json'));
+ await go('/capture'); await page.getByRole('alert').filter({ hasText: '기존 데이터 보호' }).waitFor();
+ check(await page.getByRole('button', { name: '기록 저장', exact: true }).isDisabled(), 'Corrupt storage blocks overwrite');
+ check(await page.evaluate(() => localStorage.getItem('mlu.archive.v1')) === '{broken-json', 'Corrupt original remains untouched');
+ await page.evaluate(raw => localStorage.setItem('mlu.archive.v1', raw), valid);
+ await page.reload(); await record().waitFor();
+ const blank = [' ', '\n'].join(''); await record().fill(blank);
+ await page.getByRole('button', { name: '기록 저장', exact: true }).click();
+ await page.getByRole('alert').filter({ hasText: '짧은 문장' }).waitFor(); check(true, 'Whitespace-only content rejected');
+ for (const width of [360, 390, 768, 1440]) {
+  await page.setViewportSize({ width, height: 900 });
+  for (const path of ['/capture', '/activities/new', '/activities/' + id + '/edit', '/collection', '/calendar']) {
+    await go(path);
+    check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${width}px ${path}: no horizontal overflow`);
+  }
+ }
+ await page.setViewportSize({ width: 390, height: 844 }); await go('/capture');
+ await page.screenshot({ path: 'D:/Shin/Diary/artifacts/capture-step2-mobile.png', fullPage: true });
+ await page.setViewportSize({ width: 1440, height: 1000 }); await go('/activities/' + id);
+ await page.screenshot({ path: 'D:/Shin/Diary/artifacts/activity-step2-desktop.png', fullPage: true });
+ check(errors.length === 0, 'No browser runtime errors');
+ return { passed: checks.length, checks, runtimeErrors: errors };
+ } catch (error) { throw new Error('After ' + checks.slice(-3).join(' | ') + ': ' + error.message); }
+}

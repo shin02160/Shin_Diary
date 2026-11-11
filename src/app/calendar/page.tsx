@@ -1,0 +1,7 @@
+import { Calendar } from '@/components/calendar';
+import { PageHeading } from '@/components/cards';
+export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ date?: string | string[] }> }) {
+ const { date: requested } = await searchParams;
+ const date = typeof requested === 'string' && /^[1-9]\d{3}-\d{2}-\d{2}$/.test(requested)
+   && Number.isFinite(Date.parse(requested)) && new Date(requested).toISOString().slice(0, 10) === requested ? requested : undefined;
+ return <><PageHeading eyebrow="CALENDAR" title="날짜 사이에 담긴 이야기">경험한 순간과 앞으로의 일정을 함께 살펴봐요.</PageHeading><Calendar date={date}/></>; }
