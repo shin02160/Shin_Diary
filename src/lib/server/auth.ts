@@ -1,15 +1,20 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-import { AppError, type Config } from './config.ts';
+import { AppError, type Config, type SessionConfig } from './config.ts';
 export const COOKIE = 'diary_session';
+export const SITE_COOKIE = 'diary_site_session';
 const hash = (value: string) => createHash('sha256').update(value).digest();
-export function passwordMatches(input: string, config: Config) { return timingSafeEqual(hash(input), hash(config.password)); }
-function signature(value: string, config: Config) { return createHmac('sha256', config.secret).update(config.origin + ':' + value + ':' + hash(config.password).toString('hex')).digest('hex'); }
-export function issueSession(config: Config, now = Date.now()) { const payload = String(now + 8 * 60 * 60_000); return `${payload}.${signature(payload, config)}`; }
-export function authenticated(request: Request, config: Config, now = Date.now()) {
- const cookie = request.headers.get('cookie')?.split(';').map(s => s.trim()).find(s => s.startsWith(COOKIE+'='))?.slice(COOKIE.length+1) || '';
+export function passwordMatches(input: string, config: SessionConfig) { return timingSafeEqual(hash(input), hash(config.password)); }
+function signature(value: string, config: SessionConfig) { return createHmac('sha256', config.secret).update(config.origin + ':' + value + ':' + hash(config.password).toString('hex')).digest('hex'); }
+export function issueSession(config: SessionConfig, now = Date.now()) { const payload = String(now + 8 * 60 * 60_000); return `${payload}.${signature(payload, config)}`; }
+export function authenticated(request: Request, config: SessionConfig, now = Date.now(), name = COOKIE) {
+ const cookie = request.headers.get('cookie')?.split(';').map(s => s.trim()).find(s => s.startsWith(name+'='))?.slice(name.length+1) || '';
  const [expires, provided] = cookie.split('.');
  if (!/^\d+$/.test(expires || '') || Number(expires) <= now || Number(expires) > now + 8 * 60 * 60_000 || !/^[a-f0-9]{64}$/.test(provided || '')) return false;
  return timingSafeEqual(Buffer.from(provided,'hex'), Buffer.from(signature(expires,config),'hex'));
+}
+export function notionAuthenticated(request: Request, config: Config) {
+ return authenticated(request, config) ||
+  (process.env.DIARY_SITE_LOCK === 'true' && authenticated(request, config, Date.now(), SITE_COOKIE));
 }
 function matchesHost(request: Request, config: Pick<Config, 'origin'>) {
  // Next may canonicalize request.url to localhost; validate the actual Host header.
@@ -21,7 +26,17 @@ export function sameOrigin(request: Request, config: Pick<Config, 'origin'>) {
 }
 export function authorize(request: Request, config: Config) {
  if (!matchesHost(request,config)) throw new AppError(403, '앱 주소가 서버 설정과 다릅니다.');
- if (!authenticated(request,config)) throw new AppError(401, 'Notion 연결을 사용하려면 설정에서 로그인해 주세요.');
+ if (config.readOnly && request.method !== 'GET') throw new AppError(405, 'Notion 읽기 전용 모드입니다.');
+ if (config.readOnly && !config.readOnlyRequiresLogin) {
+  const site = request.headers.get('sec-fetch-site');
+  const origin = request.headers.get('origin');
+  if ((site && site !== 'same-origin' && site !== 'none') || (origin && origin !== config.origin) ||
+      request.headers.has('forwarded') || (request.headers.get('x-forwarded-for') || '').split(',').some(value => !['', '127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(value.trim()))) {
+   throw new AppError(403, '로컬 Diary 화면에서 요청해 주세요.');
+  }
+  return;
+ }
+ if (!notionAuthenticated(request,config)) throw new AppError(401, 'Notion 연결을 사용하려면 설정에서 로그인해 주세요.');
  if (request.method !== 'GET') sameOrigin(request,config);
 }
 export async function readJson(request: Request, limit = 128_000): Promise<unknown> {

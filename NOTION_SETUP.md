@@ -104,3 +104,23 @@ npm run typecheck
 검증 결과(2026-11-11): 서버 테스트 18개, 실제 HTTP 인증/요청 검증 13항목, Notion UI 모의 연동 24항목, 기존 로컬 기능 회귀 53항목 통과. 실제 Notion 서비스 연동 검증은 토큰과 대상 데이터 소스 설정 후 진행해야 합니다.
 
 링크가 첨부된 기록을 반영하려면 Entries에 선택 속성 **Source Links**를 텍스트로 추가하세요. 각 주소는 한 줄에 하나씩 저장됩니다.
+
+## 로컬 읽기 전용 위키
+
+.env.local에서 DIARY_NOTION_READ_ONLY=true를 설정하고 localhost에서 실행하면 앱 비밀번호 없이 Notion 기록과 일정을 불러올 수 있습니다. 개인 위키 메뉴에서 기존 Notion 페이지를 읽으려면 NOTION_WIKI_PAGE_ID에 시작 페이지 ID를 입력하고 해당 페이지를 Notion 통합에 공유하세요.
+
+## 외부 링크로 읽기 전용 위키 열기
+
+Node.js 서버와 영속 SQLite 디렉터리를 제공하는 호스팅에 배포하고 아래 설정을 서버 환경변수에 넣습니다.
+
+- DIARY_APP_ORIGIN에 실제 HTTPS 주소를 입력합니다.
+- DIARY_NOTION_READ_ONLY=true와 DIARY_NOTION_REQUIRE_LOGIN=true를 설정합니다.
+- DIARY_PASSWORD와 DIARY_SESSION_SECRET에 각각 16자 이상 비밀번호와 32자 이상 서명 키를 설정합니다.
+- NOTION_TOKEN, 데이터 소스 ID, NOTION_WIKI_PAGE_ID를 서버에서 설정합니다.
+- 배포 서버에서는 빌드 후 호스팅의 프록시를 통해 Next.js를 실행합니다. 호스팅이 컨테이너의 전체 인터페이스에서 수신하도록 요구하면 npx next start --hostname 0.0.0.0을 사용합니다.
+
+방문자는 /wiki에서 설정 로그인으로 이동한 뒤 위키를 읽을 수 있습니다.
+
+## 접속 시 사이트 잠금
+
+Vercel의 서버 환경변수에 DIARY_SITE_LOCK=true, DIARY_NOTION_READ_ONLY=true, 실제 HTTPS 주소 DIARY_APP_ORIGIN, DIARY_PASSWORD, DIARY_SESSION_SECRET을 설정하고 다시 배포합니다. 읽기 전용 사이트 잠금에는 숫자 4자리 또는 16자 이상의 비밀번호를 사용할 수 있습니다. 4자리 비밀번호를 쓸 때 Vercel Firewall에서 /api/site/session 요청에 별도 속도 제한을 설정하세요. 앱 자체의 시도 횟수 제한은 실행 인스턴스별입니다.

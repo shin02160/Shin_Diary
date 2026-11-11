@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 const origin='http://127.0.0.1:3104';
 const filename='http-test-'+randomUUID()+'.sqlite';
 const password='isolated-test-password-12345';
-const child=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--port','3104','--hostname','127.0.0.1'],{cwd:process.cwd(),windowsHide:true,stdio:['ignore','pipe','pipe'],env:{...process.env,NOTION_TOKEN:'fake-token-no-network-calls',NOTION_ACTIVITIES_DATA_SOURCE_ID:'11111111-1111-4111-8111-111111111111',NOTION_ENTRIES_DATA_SOURCE_ID:'22222222-2222-4222-8222-222222222222',DIARY_PASSWORD:password,DIARY_SESSION_SECRET:'isolated-http-test-secret-more-than-32-characters',DIARY_APP_ORIGIN:origin,DIARY_STATE_FILE:filename}});
+const child=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--port','3104','--hostname','127.0.0.1'],{cwd:process.cwd(),windowsHide:true,stdio:['ignore','pipe','pipe'],env:{...process.env,DIARY_NOTION_READ_ONLY:'false',NOTION_TOKEN:'fake-token-no-network-calls',NOTION_ACTIVITIES_DATA_SOURCE_ID:'11111111-1111-4111-8111-111111111111',NOTION_ENTRIES_DATA_SOURCE_ID:'22222222-2222-4222-8222-222222222222',DIARY_PASSWORD:password,DIARY_SESSION_SECRET:'isolated-http-test-secret-more-than-32-characters',DIARY_APP_ORIGIN:origin,DIARY_STATE_FILE:filename}});
 let output='';let ready=false;
 const checks=[];const check=(ok,name)=>{assert(ok,name);checks.push(name);};
 const timeout=setTimeout(()=>{console.error('HTTP verification server readiness timeout');process.exitCode=1;child.kill();},20000);

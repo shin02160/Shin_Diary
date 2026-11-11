@@ -25,6 +25,7 @@ export function CalendarNotion({ preview, onRead, onSave }: {
   onRead: (events: SavedEvent[]) => void;
   onSave: (event: SavedEvent) => void;
 }) {
+  const [canWrite, setCanWrite] = useState(false);
   const [review, setReview] = useState<Review>();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -36,7 +37,12 @@ export function CalendarNotion({ preview, onRead, onSave }: {
 
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; };
+    let alive = true;
+    void api<{ configured: boolean; readOnly?: boolean }>('status').then(status => {
+      if (alive) setCanWrite(!status.readOnly);
+    }).catch(() => {});
+
+    return () => { alive = false; mounted.current = false; };
   }, []);
 
   async function run(action: () => Promise<void>) {
@@ -103,7 +109,7 @@ export function CalendarNotion({ preview, onRead, onSave }: {
         <button type="button" className="button" disabled={busy} onClick={() => void run(() => read(false))}>
           저장된 일정 불러오기
         </button>
-        {preview && (
+        {preview && canWrite && (
           <button type="button" className="button" disabled={busy} onClick={() => void run(() => read(true))}>
             Notion 저장 전 비교
           </button>

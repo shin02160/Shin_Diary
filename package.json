@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --hostname localhost",
     "build": "next build",
-    "start": "next start",
+    "start": "next start --hostname localhost",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "node --experimental-transform-types --test tests/notion/*.test.ts tests/calendar/*.test.ts",

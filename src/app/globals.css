@@ -19,3 +19,22 @@
 .editor-form .entry-photo{max-width:360px;margin-bottom:8px}
 
 .collection-list{list-style:none;padding:0}.collection-list li{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px;padding:12px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}.collection-list span{color:var(--muted)}
+
+.wiki-content{overflow-wrap:anywhere}.wiki-content pre{overflow:auto;max-width:100%}.wiki-content blockquote{margin-inline:0;padding-inline-start:16px;border-inline-start:3px solid var(--line)}
+
+.app-shell:has(.site-lock-shell){display:block}
+.app-shell:has(.site-lock-shell) .sidebar,.app-shell:has(.site-lock-shell) footer,.app-shell:has(.site-lock-shell) .profile{display:none}
+.app-shell:has(.site-lock-shell) .workspace{max-width:none}
+.app-shell:has(.site-lock-shell) main{padding:0;max-width:none}
+.site-lock-shell{min-height:75vh;padding:clamp(28px,8vw,84px) 16px;background:var(--bg)}
+.site-lock-card{max-width:520px;margin:auto;padding:clamp(20px,5vw,36px);background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:0 12px 32px #3536420d}
+.site-lock-card h1{font-size:clamp(23px,5vw,32px);margin:10px 0 4px}
+.site-lock-card p{color:var(--muted);margin:0 0 22px}
+.site-lock-card label{display:block;font-weight:700;margin-bottom:8px}
+.site-lock-icon{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:var(--lavender);font-size:23px}
+.site-lock-input{display:flex;gap:8px}
+.site-lock-input input,.site-lock-input button{border:1px solid #a39bae;border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;min-height:46px;padding:8px 12px}
+.site-lock-input input{flex:1;min-width:0;font-size:16px}
+.site-lock-input button{flex:none}
+.site-lock-submit{width:100%;justify-content:center;margin-top:14px}
+.site-lock-card .form-error{margin:10px 0 0}
