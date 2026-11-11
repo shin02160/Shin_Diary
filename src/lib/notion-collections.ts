@@ -7,6 +7,8 @@ export interface CollectionItem {
  location?: string;
  detail?: string;
  memo?: string;
+ cover?: string;
+ updatedAt?: string;
 }
 export type CollectionResult =
  | { state: 'unconfigured' }

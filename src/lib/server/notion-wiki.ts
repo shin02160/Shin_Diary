@@ -62,9 +62,9 @@ export async function readWiki(api: Transport, rootId: string, pageId?: string):
     const data = block[block.type] as { rich_text?: Rich[]; title?: string; checked?: boolean; url?: string } | undefined;
     const text = richText(data?.rich_text);
     if (block.type === 'child_page') text.push({ text: data?.title || '하위 페이지' });
-    if (block.type === 'to_do') text.unshift({ text: data?.checked ? '☑ ' : '☐ ' });
     if (block.type === 'bookmark' && data?.url) text.push({ text: data.url, url: safeLink(data.url) });
     result.push({ id: key, kind: block.type, text, page: block.type === 'child_page' ? key : undefined,
+     checked: block.type === 'to_do' ? data?.checked === true : undefined,
      children: block.has_children && block.type !== 'child_page' ? await blocks(key, depth + 1) : [] });
    }
    cursor = list.has_more && list.next_cursor !== cursor ? list.next_cursor : undefined;

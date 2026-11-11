@@ -1,4 +1,5 @@
 "use client";
+import { Icon } from '@/components/icon';
 
 import { LocalDraft } from './local-draft';
 import Link from 'next/link';
@@ -75,7 +76,7 @@ function Review({ entries, activities }: { entries: Entry[]; activities: Activit
               <h2>연결된 활동</h2>
               {linked.length ? (
                 <ul>{linked.map(([id, count]) => (
-                  <li key={id}><Link className="text-link" href={'/activities/' + encodeURIComponent(id)}>{names.get(id) ?? '연결된 활동'} ↗</Link> · {count}개 <Link className="text-link" href={'/activities/' + encodeURIComponent(id) + '/review'} aria-label={(names.get(id) ?? '연결된 활동') + ' 회고 보기'}>회고 보기 ↗</Link></li>
+                  <li key={id}><Link className="text-link" href={'/activities/' + encodeURIComponent(id)}>{names.get(id) ?? '연결된 활동'} <Icon name="open" size="small"/></Link> · {count}개 <Link className="text-link" href={'/activities/' + encodeURIComponent(id) + '/review'} aria-label={(names.get(id) ?? '연결된 활동') + ' 회고 보기'}>회고 보기 <Icon name="open" size="small"/></Link></li>
                 ))}</ul>
               ) : <p>이 달에 활동과 연결한 기록이 없어요.</p>}
             </section>

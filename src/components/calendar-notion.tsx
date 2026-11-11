@@ -1,4 +1,5 @@
 "use client";
+import { Icon } from '@/components/icon';
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
@@ -107,11 +108,11 @@ export function CalendarNotion({ preview, onRead, onSave }: {
       <h2 id="calendar-notion-heading">Notion 일정</h2>
       <div className="form-actions">
         <button type="button" className="button" disabled={busy} onClick={() => void run(() => read(false))}>
-          저장된 일정 불러오기
+          <Icon name="cloudRead"/> 저장된 일정 불러오기
         </button>
         {preview && canWrite && (
           <button type="button" className="button" disabled={busy} onClick={() => void run(() => read(true))}>
-            Notion 저장 전 비교
+            <Icon name="filter"/> Notion 저장 전 비교
           </button>
         )}
       </div>
@@ -144,7 +145,7 @@ export function CalendarNotion({ preview, onRead, onSave }: {
                     <p>저장된 일정 · {previous?.event.title} · {previous && eventPeriod(previous.event)}</p>
                     <p>미리보기 일정 · {event.title} · {eventPeriod(event)}</p>
                     {previous && previous.event.location !== event.location && (
-                      <p>장소 · {previous.event.location || '없음'} → {event.location || '없음'}</p>
+                      <p>장소 · {previous.event.location || '없음'} <span className="sr-only">에서</span><Icon name="forward" size="small"/> {event.location || '없음'}</p>
                     )}
                     {previous && previous.event.description !== event.description && (
                       <details><summary>설명 비교</summary>
@@ -153,7 +154,7 @@ export function CalendarNotion({ preview, onRead, onSave }: {
                       </details>
                     )}
                     {previous && previous.event.status !== event.status && (
-                      <p>일정 상태 · {previous.event.status} → {event.status}</p>
+                      <p>일정 상태 · {previous.event.status} <span className="sr-only">에서</span><Icon name="forward" size="small"/> {event.status}</p>
                     )}
                   </li>
                 ))}

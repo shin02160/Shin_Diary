@@ -1,4 +1,5 @@
 'use client';
+import { Icon } from '@/components/icon';
 
 import { useState } from 'react';
 
@@ -26,7 +27,7 @@ export function SiteUnlock({ next, numeric }: { next: string; numeric: boolean }
  }
  return (
   <section className="site-lock-card" aria-labelledby="site-lock-title">
-   <div className="site-lock-icon" aria-hidden="true">🔒</div>
+   <div className="site-lock-icon" aria-hidden="true"><Icon name="lock" size="large"/></div>
    <h1 id="site-lock-title">다이어리 잠금 해제</h1>
    <p>{numeric ? '설정된 숫자 4자리를 입력하세요.' : '다이어리 비밀번호를 입력하세요.'}</p>
    <form onSubmit={unlock}>
@@ -35,10 +36,10 @@ export function SiteUnlock({ next, numeric }: { next: string; numeric: boolean }
      <input id="site-password" type={visible ? 'text' : 'password'} inputMode={numeric ? 'numeric' : undefined}
       pattern={numeric ? '[0-9]{4}' : undefined} maxLength={numeric ? 4 : 1000}
       value={password} onChange={event => setPassword(event.target.value)} autoComplete="current-password" required/>
-     <button type="button" aria-pressed={visible} onClick={() => setVisible(value => !value)}>{visible ? '숨기기' : '보기'}</button>
+     <button type="button" aria-label={visible ? '비밀번호 숨기기' : '비밀번호 보기'} onClick={() => setVisible(value => !value)}><Icon name={visible ? 'hide' : 'show'}/></button>
     </div>
     {error && <p className="form-error" role="alert">{error}</p>}
-    <button type="submit" className="button primary site-lock-submit" disabled={busy}>{busy ? '확인 중…' : '다이어리 열기 →'}</button>
+    <button type="submit" className="button primary site-lock-submit" disabled={busy}>{busy ? '확인 중…' : <>다이어리 열기 <Icon name="forward"/></>}</button>
    </form>
   </section>
  );

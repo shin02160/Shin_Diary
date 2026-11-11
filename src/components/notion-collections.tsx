@@ -1,63 +1,32 @@
-'use client';
-
-import { useEffect, useState } from 'react';
+import Image from 'next/image';
+import { Icon, type IconName } from './icon';
 import { dayLabel } from '@/lib/dates';
-import type { CollectionResult, NotionCollections as Collections } from '@/lib/notion-collections';
-import { api } from '@/lib/notion-sync';
+import { catalogLabels, type CatalogItem, type CatalogKind } from '@/lib/universe-catalog';
 
-const PAGE_SIZE = 12;
+export const catalogIcons = { travel: 'travel', concert: 'concert', daily: 'daily', project: 'project' } satisfies Record<CatalogKind, IconName>;
 
-function CollectionSection({ id, title, result }: { id: string; title: string; result: CollectionResult }) {
- const [limit, setLimit] = useState(PAGE_SIZE);
+export function CatalogCard({ item, compact = false }: { item: CatalogItem; compact?: boolean }) {
+ const start = item.start?.slice(0, 10);
+ const end = item.end?.slice(0, 10);
+ const excerpt = item.summary?.trim().slice(0, 180);
  return (
-  <section aria-labelledby={id}>
-   <h2 id={id}>{title}</h2>
-   {result.state === 'unconfigured' ? <p className="muted">Notion 데이터 소스를 연결하면 표시됩니다.</p> :
-    result.state === 'failed' ? <p role="alert">{result.message}</p> :
-    !result.items.length ? <p className="muted">불러올 항목이 없어요.</p> : (
-     <>
-      <div className="grid two">{result.items.slice(0, limit).map(item => {
-       const start = item.start?.slice(0, 10);
-       const end = item.end?.slice(0, 10);
-       return (
-        <article className="resume-panel" key={item.id}>
-         <h3>{item.title}</h3>
-         {start && <p><time dateTime={item.start}>{dayLabel(start)}</time>{end && end !== start && <> ~ <time dateTime={item.end}>{dayLabel(end)}</time></>}</p>}
-         {item.location && <p>{item.location}</p>}
-         {item.detail && <p>{item.detail}</p>}
-         {item.memo && <details><summary>감상 메모</summary><p className="preserve-lines">{item.memo}</p></details>}
-         <a className="text-link" href={item.url} target="_blank" rel="noopener noreferrer">Notion 원본 열기 ↗</a>
-        </article>
-       );
-      })}</div>
-      {result.items.length > limit && <button className="button" type="button" onClick={() => setLimit(value => value + PAGE_SIZE)}>{title} 더 보기</button>}
-      {result.truncated && <p>최근 500개 항목까지 표시합니다.</p>}
-     </>
-    )}
-  </section>
- );
-}
-
-export function NotionCollections({ attempt }: { attempt: number }) {
- const [data, setData] = useState<Collections>();
- const [error, setError] = useState('');
- useEffect(() => {
-  let current = true;
-  api<Collections>('collections').then(result => {
-   if (current) setData(result);
-  }).catch(error => {
-   if (current) setError(error instanceof Error ? error.message : '여행·공연 자료를 불러오지 못했습니다.');
-  });
-  return () => { current = false; };
- }, [attempt]);
-
- if (error) return <p role="alert">{error}</p>;
- if (!data) return <p role="status">여행·공연 자료를 불러오는 중…</p>;
- return (
-  <>
-   <CollectionSection id="notion-trips" title="여행" result={data.trips}/>
-   {data.itinerary.state !== 'unconfigured' && <CollectionSection id="notion-itinerary" title="여행 일정" result={data.itinerary}/>}
-   <CollectionSection id="notion-performances" title="공연" result={data.performances}/>
-  </>
+  <article className={`universe-card universe-tone-${item.kind}${compact ? ' universe-card-compact' : ''}`}>
+   {item.cover && <Image className="universe-cover" src={item.cover} alt="" width={560} height={320} unoptimized referrerPolicy="no-referrer"/>}
+   {compact && !item.cover && <span className="universe-type-thumbnail"><Icon name={catalogIcons[item.kind]} size="large"/></span>}
+   <div className="universe-card-body">
+    <span className="universe-kind"><Icon name={catalogIcons[item.kind]} size="small"/> {item.type === '기록' || item.type === '활동' ? catalogLabels[item.kind] + ' · ' + item.type : item.type}</span>
+    <h3>{item.url ? <a href={item.url} target="_blank" rel="noopener noreferrer">{item.title} <Icon name="external" size="small"/></a> : item.title}</h3>
+    {start && <p className="universe-meta"><Icon name="calendar" size="small"/> <time dateTime={item.start}>{dayLabel(start)}</time>{end && end !== start && <> ~ <time dateTime={item.end}>{dayLabel(end)}</time></>}</p>}
+    {item.location && <p className="universe-meta"><Icon name="place" size="small"/> {item.location}</p>}
+    {!compact && item.detail && <p className="universe-meta">{item.detail}</p>}
+    {excerpt && (!compact || item.entry) && <p className="universe-excerpt">{excerpt}{(item.summary?.length ?? 0) > 180 && '…'}</p>}
+    {!compact && item.activity && (item.activity.nextStep || item.activity.lastProgress) && <details>
+     <summary>이어서 하기</summary>
+     {item.activity.lastProgress && <p className="universe-excerpt">{item.activity.lastProgress}</p>}
+     {item.activity.nextStep && <p className="universe-excerpt">{item.activity.nextStep}</p>}
+    </details>}
+    {!compact && !!item.tags.length && <p className="universe-meta">{item.tags.map(tag => '#' + tag).join(' · ')}</p>}
+   </div>
+  </article>
  );
 }

@@ -2,105 +2,146 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { NotionCollections } from './notion-collections';
-import { EntryCard, PageHeading } from './cards';
-import { orderedEntries } from '@/lib/local-store';
-import { api, SyncError } from '@/lib/notion-sync';
-import { categoryLabels, statusLabels } from '@/lib/sample-data';
+import { Icon } from './icon';
+import { CatalogCard, catalogIcons } from './notion-collections';
+import { RecordReminder } from './record-reminder';
+import { useArchive } from '@/lib/local-store';
+import { api } from '@/lib/notion-sync';
+import { buildCatalog, catalogLabels, filterCatalog, type CatalogKind } from '@/lib/universe-catalog';
 import type { Activity, Entry } from '@/lib/types';
+import type { NotionCollections } from '@/lib/notion-collections';
 
-const PAGE_SIZE = 24;
-interface ArchiveData { activities: Activity[]; entries: Entry[] }
+const kinds = Object.keys(catalogLabels) as CatalogKind[];
+const PAGE = 18;
+type Archive = { activities: Activity[]; entries: Entry[] };
+type Result<T> = { data: T } | { error: string };
 
-export function NotionArchiveHome() {
- const [data, setData] = useState<ArchiveData>();
- const [failure, setFailure] = useState<{ message: string; login: boolean }>();
+export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSearch = false, remote = true }: {
+ mode?: 'home' | 'explore' | 'wiki';
+ initialKind?: CatalogKind | 'all';
+ focusSearch?: boolean;
+ remote?: boolean;
+}) {
+ const local = useArchive();
+ const [archive, setArchive] = useState<Result<Archive>>();
+ const [collections, setCollections] = useState<Result<NotionCollections>>();
  const [attempt, setAttempt] = useState(0);
+ const [kind, setKind] = useState(initialKind);
  const [query, setQuery] = useState('');
- const [activity, setActivity] = useState('');
- const [limit, setLimit] = useState(PAGE_SIZE);
+ const [year, setYear] = useState('');
+ const [tag, setTag] = useState('');
+ const [list, setList] = useState(false);
+ const [limit, setLimit] = useState(PAGE);
 
  useEffect(() => {
-  let current = true;
-  api<ArchiveData>('archive').then(result => {
-   if (current) setData({ ...result, entries: orderedEntries(result.entries) });
-  }).catch(error => {
-   if (current) setFailure({
-    message: error instanceof Error ? error.message : 'Notion 기록을 불러오지 못했습니다.',
-    login: error instanceof SyncError && error.status === 401,
-   });
-  });
-  return () => { current = false; };
- }, [attempt]);
+  let alive = true;
+  const load = <T,>(path: string, update: (result: Result<T>) => void) => {
+   void api<T>(path).then(data => { if (alive) update({ data }); })
+    .catch(error => { if (alive) update({ error: error instanceof Error ? error.message : '기록을 불러오지 못했습니다.' }); });
+  };
+  if (remote) load<Archive>('archive', setArchive);
+  load<NotionCollections>('collections', setCollections);
+  return () => { alive = false; };
+ }, [attempt, remote]);
 
- const search = query.trim().toLocaleLowerCase('ko-KR');
- const names = new Map(data?.activities.map(item => [item.id, item.name]));
- const entries = data?.entries.filter(entry =>
-  (!activity || entry.activityId === activity) &&
-  [entry.title, entry.content, entry.place, entry.mood, entry.activityId && names.get(entry.activityId), ...entry.tags]
-   .join(' ').toLocaleLowerCase('ko-KR').includes(search)
- ) ?? [];
+ const collectionData = collections && 'data' in collections ? collections.data : undefined;
+ const archiveData = remote ? archive && 'data' in archive ? archive.data : undefined : local.ready ? local : undefined;
+ const items = buildCatalog(archiveData, collectionData);
+ const loading = (remote ? !archive : !local.ready) || !collections;
+ const failedCollections = Object.entries(collectionData ?? {}).filter(([, value]) => value.state === 'failed');
+ const sourceNames = { trips: '여행', itinerary: '여행 일정', performances: '공연' } as const;
+ const errors = [
+  archive && 'error' in archive ? archive.error : '',
+  collections && 'error' in collections ? collections.error : '',
+  ...failedCollections.map(([key, value]) => value.state === 'failed' ? sourceNames[key as keyof typeof sourceNames] + ' · ' + value.message : ''),
+ ].filter(Boolean);
+ const years = [...new Set(items.flatMap(item => {
+  const value = item.start || item.updated;
+  return value ? [value.slice(0, 4)] : [];
+ }))].sort().reverse();
+ const tags = [...new Set(items.flatMap(item => item.tags))].sort((a, b) => a.localeCompare(b, 'ko'));
+ const shown = filterCatalog(items, kind, query, year, tag);
+ const continuing = items.find(item => item.activity && !item.activity.isArchived &&
+  (item.activity.lifecycleStatus === 'active' || item.activity.lifecycleStatus === 'parked'));
+ const hasTruncatedSource = Object.values(collectionData ?? {}).some(value => value.state === 'ready' && value.truncated);
 
- return (
-  <>
-   <PageHeading eyebrow="NOTION ARCHIVE" title="나의 기록 모아보기">{null}</PageHeading>
-   {failure ? (
-    <div className="resume-panel">
-     <p role="alert">{failure.message}</p>
-     {failure.login ? <Link href="/settings" className="button">설정에서 로그인</Link> :
-      <button type="button" className="button" onClick={() => {
-       setFailure(undefined);
-       setAttempt(value => value + 1);
-      }}>다시 불러오기</button>}
+ function reload() {
+  setArchive(undefined);
+  setCollections(undefined);
+  setAttempt(value => value + 1);
+ }
+
+ return <>
+  {mode === 'home' ? <>
+   <section className="universe-hero">
+    <div className="universe-hero-copy">
+     <span className="universe-hero-label">개인 WIKI</span>
+     <h1>나의 모든 기록과 이야기,<br/><span>Youngshin&apos;s Universe</span></h1>
+     <p>여행, 공연, 일상과 프로젝트까지.<br/>나의 기록이 쌓이는 개인 위키.</p>
     </div>
-   ) : !data ? <p role="status">Notion 기록을 불러오는 중…</p> : (
-    <>
-     <p>활동 {data.activities.length}개 · 기록 {data.entries.length}개</p>
-     <div className="form-actions">
-      <button type="button" className="button" onClick={() => {
-       setData(undefined);
-       setAttempt(value => value + 1);
-      }}>새로 불러오기</button>
+    <div className="universe-night" aria-hidden="true">
+     <span className="universe-moon"/><span className="universe-star star-top"/><span className="universe-star star-left"/><span className="universe-star star-bottom"/>
+    </div>
+   </section>
+   {!remote && local.ready && !local.error && <RecordReminder entries={local.entries}/>}
+   <section aria-labelledby="universe-spaces">
+    <div className="universe-heading"><h2 id="universe-spaces">나의 공간</h2><Link href="/explore">전체 탐색 <Icon name="next" size="small"/></Link></div>
+    <div className="universe-spaces">
+     {(['travel', 'concert', 'daily'] as const).map(key => <Link className={'universe-space universe-tone-' + key} key={key} href={'/explore?category=' + key}>
+      <Icon name={catalogIcons[key]} size="large"/><strong>{catalogLabels[key]}</strong>
+     </Link>)}
+     <Link className="universe-space universe-tone-project" href="/wiki"><Icon name="wiki" size="large"/><strong>개인 WIKI</strong></Link>
+    </div>
+   </section>
+   {continuing && <section aria-labelledby="universe-continue">
+    <div className="universe-heading"><h2 id="universe-continue">이어서 보기</h2><Link href="/continue">모두 보기 <Icon name="next" size="small"/></Link></div>
+    <CatalogCard item={continuing}/>
+   </section>}
+   <section aria-labelledby="universe-recent">
+    <div className="universe-heading"><h2 id="universe-recent"><Icon name="archive" size="small"/> 최근 기록</h2><Link href="/explore">모두 보기 <Icon name="next" size="small"/></Link></div>
+    {items.length > 0 && <div className="universe-cards universe-recent">{items.slice(0, 6).map(item => <CatalogCard key={item.key} item={item} compact/>)}</div>}
+    {!loading && items.length === 0 && !errors.length && <p className="universe-muted">아직 표시할 기록이 없어요.</p>}
+   </section>
+  </> : <>
+   <div className="universe-heading"><h1>{mode === 'wiki' ? '개인 WIKI' : '나의 기록 탐색'}</h1></div>
+   <div className="universe-filters">
+    <label className="search icon-search">
+     <Icon name="search" size="small"/><span className="sr-only">제목, 장소, 태그 검색</span>
+     <input type="search" autoFocus={focusSearch} placeholder="제목, 장소, 태그 검색" value={query}
+      onChange={event => { setQuery(event.target.value); setLimit(PAGE); }}/>
+    </label>
+    <p className="universe-muted">제목, 장소, 태그와 아티스트 등 표시 속성을 검색합니다.</p>
+    <div className="chips" role="group" aria-label="카테고리">
+     {(['all', ...kinds] as const).map(key => <button key={key} type="button" aria-pressed={kind === key}
+      onClick={() => { setKind(key); setLimit(PAGE); }}>{key === 'all' ? '전체' : catalogLabels[key]}</button>)}
+    </div>
+    <div className="universe-filter-row">
+     <label>연도 <select value={year} onChange={event => { setYear(event.target.value); setLimit(PAGE); }}>
+      <option value="">전체</option>{years.map(value => <option key={value}>{value}</option>)}
+     </select></label>
+     {!!tags.length && <label>태그 <select value={tag} onChange={event => { setTag(event.target.value); setLimit(PAGE); }}>
+      <option value="">전체</option>{tags.map(value => <option key={value}>{value}</option>)}
+     </select></label>}
+     <div className="chips" role="group" aria-label="보기 방식">
+      <button type="button" aria-pressed={!list} aria-label="카드 보기" onClick={() => setList(false)}><Icon name="grid" size="small"/></button>
+      <button type="button" aria-pressed={list} aria-label="목록 보기" onClick={() => setList(true)}><Icon name="list" size="small"/></button>
      </div>
-     {data.activities.length > 0 && (
-      <section aria-labelledby="archive-activities">
-       <h2 id="archive-activities">활동</h2>
-       <div className="grid two">
-        {data.activities.map(item => (
-         <details className="resume-panel" key={item.id}>
-          <summary>{item.name}</summary>
-          <p>{categoryLabels[item.category]} · {statusLabels[item.lifecycleStatus]}{item.isArchived && ' · 아카이브'}</p>
-          {item.summary && <p className="preserve-lines">{item.summary}</p>}
-          <button type="button" className="button" onClick={() => { setActivity(item.id); setLimit(PAGE_SIZE); }}>연결 기록만 보기</button>
-         </details>
-        ))}
-       </div>
-      </section>
-     )}
-     <section aria-labelledby="archive-entries">
-      <h2 id="archive-entries">기록</h2>
-      {data.entries.length > 0 && (
-       <div className="editor-form form-grid">
-        <label>기록 검색<input type="search" value={query} onChange={event => { setQuery(event.target.value); setLimit(PAGE_SIZE); }}/></label>
-        {data.activities.length > 0 && <label>연결 활동<select value={activity} onChange={event => {
-         setActivity(event.target.value);
-         setLimit(PAGE_SIZE);
-        }}>
-         <option value="">모든 활동</option>
-         {data.activities.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
-        </select></label>}
-       </div>
-      )}
-      {entries.length === 0 ? <div className="empty"><p>{data.entries.length ? '검색 조건에 맞는 기록이 없어요.' : 'Notion에서 불러올 기록이 아직 없어요.'}</p></div> : (
-       <>
-        <div className="grid three">{entries.slice(0, limit).map(entry => <EntryCard key={entry.id} entry={entry} readOnly/>)}</div>
-        {entries.length > limit && <button className="button" type="button" onClick={() => setLimit(value => value + PAGE_SIZE)}>기록 더 보기</button>}
-       </>
-      )}
-     </section>
-     <NotionCollections key={attempt} attempt={attempt}/>
-    </>
-   )}
-  </>
- );
+    </div>
+   </div>
+   {shown.length > 0 && <>
+    <p className="universe-muted" aria-live="polite">{shown.length}개</p>
+    <div className={'universe-cards' + (list ? ' universe-list' : '')}>
+     {shown.slice(0, limit).map(item => <CatalogCard key={item.key} item={item} compact={list}/>)}
+    </div>
+    {shown.length > limit && <button className="button" type="button" onClick={() => setLimit(value => value + PAGE)}>기록 더 보기</button>}
+   </>}
+   {!loading && !shown.length && !errors.length && <p className="universe-muted">{items.length ? '조건에 맞는 기록이 없어요.' : '아직 표시할 기록이 없어요.'}</p>}
+  </>}
+  {mode !== 'home' && hasTruncatedSource && <p className="universe-muted">일부 데이터 소스는 최근 항목 500개까지 표시합니다.</p>}
+  {loading && <p role="status" className="universe-muted">기록을 불러오는 중…</p>}
+  {errors.length > 0 && <div className="universe-load-error">
+   <ul>{errors.map(message => <li key={message} role="alert">{message}</li>)}</ul>
+   <button type="button" className="button" onClick={reload}>다시 불러오기</button> <Link className="text-link" href="/settings">연결 상태</Link>
+  </div>}
+ </>;
 }

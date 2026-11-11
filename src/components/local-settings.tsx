@@ -1,4 +1,5 @@
 "use client";
+import { Icon } from '@/components/icon';
 
 import { useRef, useState } from 'react';
 import { decode, mutate, STORAGE_KEY, today, useArchive, type Archive } from '@/lib/local-store';
@@ -108,13 +109,13 @@ export function LocalSettings() {
       <p>직접 남긴 기록 {entries.filter(entry => !entry.isSample).length}개 · 활동 {activities.filter(activity => !activity.isSample).length}개</p>
       <p>같은 주소·브라우저에서 다시 열면 유지됩니다. 다른 기기에서는 Notion에 반영한 기록을 불러올 수 있습니다. 사이트 데이터 삭제 시 미반영 기록은 사라지므로 중요한 내용은 백업해 주세요.</p>
       <div className="form-actions">
-        <button type="button" className="button" onClick={backup} disabled={!ready || busy}>저장 데이터 백업</button>
+        <button type="button" className="button" onClick={backup} disabled={!ready || busy}><Icon name="backup"/> 저장 데이터 백업</button>
         <button type="button" className="button" onClick={exportMarkdown} disabled={!ready || !!archive.error || busy}>
-          내 기록 Markdown으로 내보내기
+          <Icon name="download"/> 내 기록 Markdown으로 내보내기
         </button>
       </div>
       <details>
-        <summary>백업에서 복원</summary>
+        <summary><Icon name="restore" size="small"/> 백업에서 복원</summary>
         <div className="editor-form">
           <p>백업에 있는 기록과 활동을 이 브라우저에 추가합니다. 같은 ID의 내 기록과 활동은 현재 내용이 우선합니다.</p>
           {archive.error && <p role="status">현재 저장소를 읽을 수 없어 병합 복원을 진행할 수 없습니다.</p>}

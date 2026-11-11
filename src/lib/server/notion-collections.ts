@@ -4,7 +4,11 @@ import type { Transport } from './notion-client.ts';
 import { readText, type NotionPage } from './notion-mapping.ts';
 
 const validId = /^(?:[a-f0-9]{32}|[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})$/i;
-interface Result { results: NotionPage[]; has_more: boolean; next_cursor?: string }
+interface ArchivePage extends NotionPage {
+ last_edited_time?: string;
+ cover?: { type?: string; file?: { url?: string }; external?: { url?: string } } | null;
+}
+interface Result { results: ArchivePage[]; has_more: boolean; next_cursor?: string }
 export interface CollectionSources { trips?: string; itinerary?: string; performances?: string }
 type CollectionKind = keyof CollectionSources;
 const fields = {
@@ -17,7 +21,16 @@ function date(value?: string | null) {
  return value && /^\d{4}-\d{2}-\d{2}(?:T|$)/.test(value) && Number.isFinite(Date.parse(value)) ? value : undefined;
 }
 
-function format(page: NotionPage, kind: CollectionKind, tripNames: Map<string, string>): CollectionItem | undefined {
+function coverUrl(cover: ArchivePage['cover']) {
+ const value = cover?.type === 'external' ? cover.external?.url : cover?.type === 'file' ? cover.file?.url : undefined;
+ if (!value) return;
+ try {
+  const url = new URL(value);
+  if (url.protocol === 'https:' && !url.username && !url.password) return url.href;
+ } catch { /* An unavailable cover leaves the image area empty. */ }
+}
+
+function format(page: ArchivePage, kind: CollectionKind, tripNames: Map<string, string>): CollectionItem | undefined {
  const props = page.properties;
  const keys = fields[kind];
  const title = readText(props[keys.name]).trim().slice(0, 180);
@@ -25,8 +38,8 @@ function format(page: NotionPage, kind: CollectionKind, tripNames: Map<string, s
  const id = page.id.replaceAll('-', '').toLowerCase();
  const sourceDate = props[keys.date]?.date;
  const text = (key: string) => (readText(props[key]).trim() || props[key]?.select?.name)?.slice(0, 200);
- const item = { id, title, url: 'https://www.notion.so/' + id, start: date(sourceDate?.start), end: date(sourceDate?.end) };
- if (kind === 'trips') return { ...item, location: text('여행지'), detail: text('상태') };
+ const item = { id, title, url: 'https://www.notion.so/' + id, start: date(sourceDate?.start), end: date(sourceDate?.end), cover: coverUrl(page.cover), updatedAt: date(page.last_edited_time) };
+ if (kind === 'trips') return { ...item, location: text('여행지'), detail: text('상태'), memo: readText(props['메모']).trim().slice(0, 500) || undefined };
  if (kind === 'itinerary') {
   const relation = props['여행']?.relation?.[0]?.id;
   const trip = relation && tripNames.get(relation.replaceAll('-', '').toLowerCase());

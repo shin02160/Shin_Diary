@@ -1,3 +1,4 @@
+import { Icon, statusIcons } from '@/components/icon';
 import { LocalDraft } from './local-draft';
 import Link from 'next/link';
 import { dateLabel, dayLabel } from '@/lib/dates';
@@ -16,7 +17,7 @@ export function ResumeCard({ activity, recent, onResume, resumeDisabled }: {
  return (
   <article className="resume-panel">
    <div className="detail-status">
-    <span className={`status status-${activity.lifecycleStatus}`}>{statusLabels[activity.lifecycleStatus]}</span>
+    <span className={`status status-${activity.lifecycleStatus}`}><Icon name={statusIcons[activity.lifecycleStatus]} size="small"/>{statusLabels[activity.lifecycleStatus]}</span>
     <span>{categoryLabels[activity.category]}{activity.isSample && ' · 샘플'}{activity.isArchived && ' · 아카이브'}</span>
    </div>
    <h2><Link className="text-link" href={url}>{activity.name}</Link></h2>
@@ -33,7 +34,7 @@ export function ResumeCard({ activity, recent, onResume, resumeDisabled }: {
     <details className="event-details">
      <summary>참고 링크 {activity.references.length}개</summary>
      <ul>{activity.references.map(url => (
-      <li key={url}><a className="reference-link" href={url} target="_blank" rel="noopener noreferrer">{url} ↗</a></li>
+      <li key={url}><a className="reference-link" href={url} target="_blank" rel="noopener noreferrer">{url} <Icon name="external" size="small"/></a></li>
      ))}</ul>
     </details>
    )}
@@ -43,7 +44,7 @@ export function ResumeCard({ activity, recent, onResume, resumeDisabled }: {
      <ul>{recent.map(entry => (
       <li key={entry.id}><time>{dateLabel(entry.occurredAt)}</time> · {entry.title || entry.content.slice(0, 60) || sourceLinkHost(entry.sourceLinks?.[0] ?? '') || (entry.photo ? '사진 기록' : '링크 기록')}</li>
      ))}</ul>
-     <Link className="text-link" href={url + '/review'}>연결 기록 돌아보기 ↗</Link>
+     <Link className="text-link" href={url + '/review'}>연결 기록 돌아보기 <Icon name="open" size="small"/></Link>
     </>
    )}
    {!activity.isSample && hasNotes && <LocalDraft label="재개 초안" source={[

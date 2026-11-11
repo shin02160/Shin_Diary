@@ -3,6 +3,6 @@ import { NotionWiki } from '@/components/notion-wiki';
 
 export default async function Wiki({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
  const { page } = await searchParams;
- if (!page && !process.env.NOTION_WIKI_PAGE_ID?.trim()) return <NotionArchiveHome/>;
+ if (!page && !process.env.NOTION_WIKI_PAGE_ID?.trim()) return <NotionArchiveHome mode="wiki" remote={process.env.DIARY_NOTION_READ_ONLY === 'true'}/>;
  return <NotionWiki key={page ?? 'root'} pageId={page}/>;
 }

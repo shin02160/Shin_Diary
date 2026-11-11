@@ -1,4 +1,5 @@
 'use client';
+import { Icon } from '@/components/icon';
 
 import Link from 'next/link';
 import { useState } from 'react';
@@ -41,7 +42,7 @@ export function ActivityReview({ id }: { id: string }) {
 
   return (
     <>
-      <Link href={activityUrl} className="text-link">← 활동 상세</Link>
+      <Link href={activityUrl} className="text-link"><Icon name="back" size="small"/> 활동 상세</Link>
       <PageHeading eyebrow="ACTIVITY REVIEW" title={activity.name + ' 회고'}>{activity.summary}</PageHeading>
       {days.length === 0 ? (
         <div className="empty">

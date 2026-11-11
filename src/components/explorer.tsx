@@ -1,4 +1,5 @@
 "use client";
+import { Icon } from '@/components/icon';
 import { useState } from 'react';
 import Link from 'next/link';
 import { orderedEntries, saveActivity, useArchive } from '@/lib/local-store';
@@ -112,7 +113,7 @@ export function Explorer({ mode }: { mode: 'memories' | 'collection' | 'continue
  }
  const count = mode === 'memories' ? shownEntries.length : shownActivities.length;
  if (!ready) return <p role="status">기록을 불러오는 중…</p>;
- return <><div className="form-actions"><Link className="button primary" href={mode === 'memories' ? '/capture' : '/activities/new'}>{mode === 'memories' ? '＋ 기록 남기기' : '＋ 새 활동'}</Link><label className="checkbox-label"><input type="checkbox" checked={showSamples} onChange={e => setShowSamples(e.target.checked)}/>샘플 함께 보기</label>{mode === 'collection' && <label className="checkbox-label"><input type="checkbox" checked={archived} onChange={e => setArchived(e.target.checked)}/>아카이브 보기</label>}</div><div className="filter-row"><div className="chips" role="group" aria-label="카테고리 필터">{(['all', ...Object.keys(categoryLabels)] as (Category | 'all')[]).map(c => <button key={c} aria-pressed={category === c} onClick={() => setCategory(c)}>{c === 'all' ? '전체' : categoryLabels[c]}</button>)}</div><label className="search"><span className="sr-only">기록과 활동 검색</span><input type="search" placeholder="마음에 남은 단어 찾기" value={query} onChange={e => setQuery(e.target.value)}/></label></div>{mode === 'continue' && (
+ return <><div className="form-actions"><Link className="button primary" href={mode === 'memories' ? '/capture' : '/activities/new'}><Icon name="add"/>{mode === 'memories' ? '기록 남기기' : '새 활동'}</Link><label className="checkbox-label"><input type="checkbox" checked={showSamples} onChange={e => setShowSamples(e.target.checked)}/>샘플 함께 보기</label>{mode === 'collection' && <label className="checkbox-label"><input type="checkbox" checked={archived} onChange={e => setArchived(e.target.checked)}/><Icon name="archive" size="small"/>아카이브 보기</label>}</div><div className="filter-row"><div className="chips" role="group" aria-label="카테고리 필터">{(['all', ...Object.keys(categoryLabels)] as (Category | 'all')[]).map(c => <button key={c} aria-pressed={category === c} onClick={() => setCategory(c)}>{c === 'all' ? '전체' : categoryLabels[c]}</button>)}</div><label className="search icon-search"><Icon name="search" size="small"/><span className="sr-only">기록과 활동 검색</span><input type="search" placeholder="마음에 남은 단어 찾기" value={query} onChange={e => setQuery(e.target.value)}/></label></div>{mode === 'continue' && (
   <>
    <div className="chips" role="group" aria-label="재개 활동 범위">
     <button type="button" aria-pressed={!archived} onClick={() => setArchived(false)}>진행·중단 활동</button>
@@ -138,7 +139,7 @@ export function Explorer({ mode }: { mode: 'memories' | 'collection' | 'continue
   </div>
  )}{mode === 'memories' && (
   <details className="resume-panel">
-   <summary>날짜·장소·태그·활동 필터{(from || to || place || tag || activity) && ' · 적용 중'}</summary>
+   <summary><Icon name="filter" size="small"/> 날짜·장소·태그·활동 필터{(from || to || place || tag || activity) && ' · 적용 중'}</summary>
    <div className="editor-form">
     <div className="form-grid">
      <label>시작일<input type="date" value={from} onChange={event => setFrom(event.target.value)}/></label>
@@ -158,7 +159,7 @@ export function Explorer({ mode }: { mode: 'memories' | 'collection' | 'continue
     <button type="button" className="button" onClick={resetFilters}>검색 조건 초기화</button>
    </div>
   </details>
- )}<p className="result-count" aria-live="polite">{count}개의 {mode === 'memories' ? '기록' : '활동'}</p>{count === 0 ? <div className="empty"><span aria-hidden="true">✧</span><h2>아직 이곳은 비어 있어요</h2><p>{mode === 'memories' ? '검색 조건을 바꿔 다시 찾아보세요.' : mode === 'continue' && archived ? '현재 조건에 맞는 아카이브 활동이 없어요.' : '다른 카테고리나 검색어로 찾아보세요.'}</p><button className="button" onClick={resetFilters}>전체 보기</button></div> : mode === 'collection' && collectionView === 'gallery' ? <CollectionGallery activities={shownActivities}/>
+ )}<p className="result-count" aria-live="polite">{count}개의 {mode === 'memories' ? '기록' : '활동'}</p>{count === 0 ? <div className="empty"><span className="empty-icon"><Icon name="empty" size="large"/></span><h2>아직 이곳은 비어 있어요</h2><p>{mode === 'memories' ? '검색 조건을 바꿔 다시 찾아보세요.' : mode === 'continue' && archived ? '현재 조건에 맞는 아카이브 활동이 없어요.' : '다른 카테고리나 검색어로 찾아보세요.'}</p><button className="button" onClick={resetFilters}>전체 보기</button></div> : mode === 'collection' && collectionView === 'gallery' ? <CollectionGallery activities={shownActivities}/>
  : mode === 'collection' && collectionView === 'list' ? (
   <ul className="collection-list">
    {shownActivities.map(item => <li key={item.id}>

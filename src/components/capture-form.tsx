@@ -1,4 +1,5 @@
 "use client";
+import { Icon } from '@/components/icon';
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -177,7 +178,7 @@ function ReadyCapture({ activityId, eventToken, existing }: { activityId: string
   update('title', firstLine.slice(0, 100));
   setShowDetails(true);
  }}>본문 첫 줄을 제목에 넣기</button>}<div>
- <label>사진 첨부<input type="file" accept="image/jpeg,image/png,image/webp" disabled={photoBusy || saving} onChange={event => {
+ <label><span><Icon name="photo" size="small"/> 사진 첨부</span><input type="file" accept="image/jpeg,image/png,image/webp" disabled={photoBusy || saving} onChange={event => {
   const file = event.currentTarget.files?.[0];
   event.currentTarget.value = '';
   if (file) void attachPhoto(file);

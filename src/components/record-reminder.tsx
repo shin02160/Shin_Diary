@@ -1,4 +1,5 @@
 'use client';
+import { Icon } from '@/components/icon';
 
 import Link from 'next/link';
 import { useState, useSyncExternalStore } from 'react';
@@ -75,7 +76,7 @@ export function RecordReminder({ entries }: { entries: Entry[] }) {
   <section className="resume-panel" aria-labelledby="record-reminder">
    <h2 id="record-reminder">오늘 기록을 남겨볼까요?</h2>
    <div className="form-actions">
-    <Link href="/capture" className="button primary">오늘 기록 남기기</Link>
+    <Link href="/capture" className="button primary"><Icon name="edit"/> 오늘 기록 남기기</Link>
     <button className="button" type="button" onClick={() => {
      try {
       writePreference(dismissedKey, date);

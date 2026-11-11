@@ -1,4 +1,5 @@
 'use client';
+import { Icon } from '@/components/icon';
 
 import Image from 'next/image';
 import { useState } from 'react';
@@ -24,7 +25,7 @@ export function SourceLinkPreview({ url }: { url: string }) {
  if (!url.toLowerCase().startsWith('https://')) return null;
  return (
   <div className="link-preview">
-   {!preview && <button className="button" type="button" disabled={busy} onClick={() => void load()}>{busy ? '불러오는 중…' : '링크 미리보기'}</button>}
+   {!preview && <button className="button" type="button" disabled={busy} onClick={() => void load()}><Icon name="link" size="small"/>{busy ? '불러오는 중…' : '링크 미리보기'}</button>}
    {error && <p role="status">{error}</p>}
    {preview && <>
     {preview.image && <Image className="entry-photo" unoptimized width={360} height={220} src={preview.image} alt=""/>}
