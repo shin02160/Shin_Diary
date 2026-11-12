@@ -1,14 +1,15 @@
+import { activityStatus, deduplicateActivities, notionActivityUrl, parseActivityDate, type ActivityView } from './activity-view.ts';
 import { dateKey } from './dates.ts';
 import type { NotionCollections } from './notion-collections.ts';
 import type { Activity, Entry } from './types.ts';
 
-export type CatalogKind = 'travel' | 'concert' | 'daily' | 'project';
-export const catalogLabels: Record<CatalogKind, string> = { travel: '여행', concert: '공연', daily: '일상', project: '프로젝트' };
-export interface CatalogItem {
+export type CatalogKind = 'travel' | 'concert' | 'daily' | 'project' | 'uncategorized';
+export const catalogLabels: Record<CatalogKind, string> = { travel: '여행', concert: '공연', daily: '일상', project: '프로젝트', uncategorized: '미분류' };
+export interface CatalogItem extends ActivityView {
  key: string;
  kind: CatalogKind;
  title: string;
- type: '여행' | '공연' | '기록' | '활동';
+ type: '여행' | '공연' | '기록' | '활동' | '일정' | '타임라인 이벤트';
  start?: string;
  end?: string;
  updated?: string;
@@ -30,14 +31,19 @@ export function buildCatalog(archive?: { activities: Activity[]; entries: Entry[
   const group = collections?.[source];
   if (group?.state !== 'ready') continue;
   for (const item of group.items) result.push({
+   sourceType: source, sourcePageId: item.id, category: kind, interestIds: [],
+   startAt: parseActivityDate(item.start, item.timezone), endAt: parseActivityDate(item.end, item.timezone),
+   status: activityStatus(source === 'trips' ? item.sourceStatus : undefined), originalUrl: item.url, updatedAt: item.updatedAt,
    key: source + ':' + item.id, kind, type, title: item.title, start: item.start, end: item.end,
-   updated: item.updatedAt, location: item.location, detail: item.detail, summary: item.memo,
+   updated: source === 'performances' ? item.updatedAt : undefined, location: item.location, detail: item.detail, summary: item.memo,
    cover: item.cover, url: item.url, detailHref: '/explore/' + source + '/' + item.id, tags: [],
   });
  }
  for (const entry of archive?.entries ?? []) {
   if (entry.isSample) continue;
   result.push({
+   sourceType: 'entry', sourcePageId: entry.notion?.pageId || entry.id, category: kinds[entry.category], interestIds: [],
+   startAt: entry.occurredAt, status: 'unknown', originalUrl: notionActivityUrl(entry.notion?.pageId),
    key: 'entry:' + entry.id, kind: kinds[entry.category], type: '기록',
    title: entry.title || entry.content.trim().slice(0, 64) || (entry.photo ? '사진 기록' : '링크 기록'),
    start: dateKey(entry.occurredAt), updated: entry.createdAt, location: entry.place, detail: entry.mood,
@@ -47,12 +53,14 @@ export function buildCatalog(archive?: { activities: Activity[]; entries: Entry[
  for (const activity of archive?.activities ?? []) {
   if (activity.isSample) continue;
   result.push({
+   sourceType: 'activity', sourcePageId: activity.notion?.pageId || activity.id, category: kinds[activity.category], interestIds: [],
+   status: 'unknown', originalUrl: notionActivityUrl(activity.notion?.pageId), updatedAt: activity.updatedAt,
    key: 'activity:' + activity.id, kind: kinds[activity.category], type: '활동',
    title: activity.name, updated: activity.updatedAt, summary: activity.summary,
    activity, tags: activity.tags,
   });
  }
- return result.sort((a, b) => (b.updated || b.start || '').localeCompare(a.updated || a.start || '') || a.title.localeCompare(b.title, 'ko'));
+ return deduplicateActivities(result).sort((a, b) => (b.updated || b.start || '').localeCompare(a.updated || a.start || '') || a.title.localeCompare(b.title, 'ko'));
 }
 
 export function filterCatalog(items: CatalogItem[], kind: CatalogKind | 'all', query: string, year: string, tag: string) {

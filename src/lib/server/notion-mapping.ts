@@ -10,7 +10,7 @@ export const schemas = {
  activity: { Name:'title', 'App ID':'rich_text', Category:'select', 'Lifecycle Status':'select', Archived:'checkbox', Summary:'rich_text', 'Last Progress':'rich_text', 'Next Step':'rich_text', 'Resume Notes':'rich_text', 'Satisfaction Note':'rich_text', References:'rich_text', 'Parked At':'date', Tags:'multi_select' },
  entry: { Name:'title', 'App ID':'rich_text', Content:'rich_text', 'Title Provided':'checkbox', 'Occurred At':'date', 'Date Kind':'select', 'Time Zone':'rich_text', 'Created At':'date', Category:'select', Mood:'rich_text', Place:'rich_text', Tags:'multi_select', Activity:'relation' }
 } as const;
-export interface Property { type?: string; title?: RichText[]; rich_text?: RichText[]; select?: { name: string } | null; status?: { name: string } | null; checkbox?: boolean; date?: { start: string; end?: string | null } | null; multi_select?: { name: string }[]; relation?: { id: string }[]; has_more?: boolean }
+export interface Property { id?: string; url?: string | null; files?: { file?: { url?: string }; external?: { url?: string } }[]; type?: string; title?: RichText[]; rich_text?: RichText[]; select?: { name: string } | null; status?: { name: string } | null; checkbox?: boolean; date?: { start: string; end?: string | null; time_zone?: string | null } | null; multi_select?: { name: string }[]; relation?: { id: string }[]; has_more?: boolean }
 interface RichText { plain_text?: string; text?: { content: string } }
 export interface NotionPage { id: string; object?: string; archived?: boolean; in_trash?: boolean; properties: Record<string,Property> }
 const rich = (value = '') => ({ rich_text: (value.match(/[\s\S]{1,900}/gu) ?? []).map(content => ({ type: 'text', text: { content } })) });

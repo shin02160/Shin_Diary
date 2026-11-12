@@ -4,6 +4,8 @@ export interface CollectionItem {
  url: string;
  start?: string;
  end?: string;
+ timezone?: string;
+ sourceStatus?: string;
  location?: string;
  detail?: string;
  memo?: string;

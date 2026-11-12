@@ -38,8 +38,10 @@ function format(page: ArchivePage, kind: CollectionKind): CollectionItem | undef
  const sourceDate = props[keys.date]?.date;
  const text = (key: string) => (readText(props[key]).trim() || props[key]?.select?.name)?.slice(0, 200);
  const item = { id, title, url: 'https://www.notion.so/' + id, start: date(sourceDate?.start), end: date(sourceDate?.end) };
- if (kind === 'trips') return { ...item, location: text('여행지'), cover: coverUrl(page.cover) };
- return { ...item, cover: coverUrl(page.cover), updatedAt: date(page.last_edited_time), location: [text('도시'), text('장소')].filter(Boolean).join(' · '),
+ const timezone = sourceDate?.time_zone ?? undefined;
+ if (kind === 'trips') return { ...item, timezone, location: text('여행지'), cover: coverUrl(page.cover),
+  sourceStatus: props['상태']?.status?.name, updatedAt: date(page.last_edited_time) };
+ return { ...item, timezone, cover: coverUrl(page.cover), updatedAt: date(page.last_edited_time), location: [text('도시'), text('장소')].filter(Boolean).join(' · '),
   detail: props['아티스트']?.multi_select?.map(value => value.name).join(', ').slice(0, 300) };
 }
 

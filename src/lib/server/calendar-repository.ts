@@ -129,7 +129,7 @@ function properties(event: ImportedEvent, batch: string) {
   };
 }
 
-function fromPage(page: NotionPage): SavedEvent {
+export function readCalendarPage(page: NotionPage): SavedEvent {
   const p = page.properties;
   const text = (name: string) => readText(p[name]);
   const wallStart = text('Wall Start');
@@ -201,7 +201,7 @@ export class CalendarRepository {
 
   async read() {
     await this.checkSchema();
-    const events = (await this.query()).map(fromPage);
+    const events = (await this.query()).map(readCalendarPage);
     if (new Set(events.map(item => item.event.id)).size !== events.length) {
       throw new AppError(409, 'Notion에 같은 일정 식별자가 여러 개 있습니다.');
     }
@@ -219,14 +219,14 @@ export class CalendarRepository {
       await this.checkSchema();
       const [page] = await this.query(importKey);
       if (page) {
-        const current = fromPage(page);
+        const current = readCalendarPage(page);
         this.journal.known(journalKey, page.id);
         if (calendarContent(current.event) === calendarContent(event)) return current;
         if (current.revision !== expected) throw new AppError(409, 'Notion 일정이 바뀌었습니다. 다시 비교해 주세요.');
         const updated = await this.client.call<NotionPage>('/pages/' + page.id, 'PATCH', {
           properties: properties({ ...event, importedAt: new Date().toISOString() }, batch),
         });
-        return fromPage(updated);
+        return readCalendarPage(updated);
       }
       if (expected !== null || this.journal.creation(journalKey)) {
         throw new AppError(409, '이전 저장 결과 또는 삭제된 일정을 확인해 주세요. 중복 생성 방지를 위해 다시 만들 수 없습니다.');
@@ -246,7 +246,7 @@ export class CalendarRepository {
       }
       if (!created.id) throw new AppError(502, 'Notion 일정 저장 결과를 확인할 수 없습니다.');
       this.journal.known(journalKey, created.id);
-      return fromPage(created);
+      return readCalendarPage(created);
     });
   }
 }

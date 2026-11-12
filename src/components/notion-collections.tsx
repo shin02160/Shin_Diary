@@ -8,7 +8,7 @@ import { toggleFavorite, useDashboardPreferences } from '@/lib/dashboard-prefere
 import { dayLabel } from '@/lib/dates';
 import { catalogLabels, type CatalogItem, type CatalogKind } from '@/lib/universe-catalog';
 
-export const catalogIcons = { travel: 'travel', concert: 'concert', daily: 'daily', project: 'project' } satisfies Record<CatalogKind, IconName>;
+export const catalogIcons = { travel: 'travel', concert: 'concert', daily: 'daily', project: 'project', uncategorized: 'archive' } satisfies Record<CatalogKind, IconName>;
 
 export function CollectionCover({ src, kind, compact = false }: { src?: string; kind: CatalogKind; compact?: boolean }) {
  const [failedSource, setFailedSource] = useState<string>();

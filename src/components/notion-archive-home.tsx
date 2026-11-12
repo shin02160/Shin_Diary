@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { InterestsView } from './interests-view';
+import { ActivityTimeline } from './activity-timeline';
 import { useEffect, useState } from 'react';
 import { Icon } from './icon';
 import { CatalogCard, catalogIcons } from './notion-collections';
@@ -12,15 +14,16 @@ import { buildCatalog, catalogLabels, filterCatalog, type CatalogKind } from '@/
 import type { Activity, Entry } from '@/lib/types';
 import type { NotionCollections } from '@/lib/notion-collections';
 
-const kinds = Object.keys(catalogLabels) as CatalogKind[];
+const kinds = (['travel', 'concert', 'daily', 'project'] as const) satisfies readonly CatalogKind[];
 const PAGE = 18;
 type Archive = { activities: Activity[]; entries: Entry[] };
 type Result<T> = { data: T } | { error: string };
 
-export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSearch = false, remote = true }: {
- mode?: 'home' | 'explore' | 'wiki';
+export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSearch = false, remote = true, interestId }: {
+ mode?: 'home' | 'explore' | 'wiki' | 'timeline' | 'interests';
  initialKind?: CatalogKind | 'all';
  focusSearch?: boolean;
+ interestId?: string;
  remote?: boolean;
 }) {
  const local = useArchive();
@@ -79,7 +82,7 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
  }
 
  return <>
-  {mode === 'home' ? <>
+  {mode === 'interests' ? <InterestsView items={items} loadingActivities={loading} activitiesFailed={errors.length > 0} interestId={interestId}/> : mode === 'timeline' ? <ActivityTimeline items={items} loading={loading} failed={errors.length > 0}/> : mode === 'home' ? <>
    <section className="universe-hero">
     <div className="universe-hero-copy">
      <h1>나의 모든 기록과 이야기,<br/><span>Youngshin&apos;s Universe</span></h1>
@@ -92,6 +95,7 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
    {!remote && local.ready && !local.error && <RecordReminder entries={local.entries}/>}
    <section aria-labelledby="universe-spaces">
     <div className="universe-heading"><h2 id="universe-spaces">나의 공간</h2><Link href="/explore">전체 탐색 <Icon name="next" size="small"/></Link></div>
+    <Link className="text-link" href="/explore/interests">관심사 <Icon name="next" size="small"/></Link> <Link className="text-link" href="/explore/timeline">취향 연대기 <Icon name="next" size="small"/></Link>
     <div className="universe-spaces">
      {(['travel', 'concert', 'daily'] as const).map(key => <Link className={'universe-space universe-tone-' + key} key={key} href={'/explore?category=' + key}>
       <Icon name={catalogIcons[key]} size="large"/><strong>{catalogLabels[key]}</strong>
@@ -121,7 +125,8 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
     </li>)}</ul>
    </section>}
   </> : <>
-   <div className="universe-heading"><h1>{mode === 'wiki' ? '개인 WIKI' : '나의 기록 탐색'}</h1></div>
+   <div className="universe-heading"><h1>{mode === 'wiki' ? '개인 WIKI' : '나의 기록 탐색'}</h1>{mode === 'explore' && <Link href="/explore/timeline">취향 연대기 <Icon name="next" size="small"/></Link>}</div>
+   {mode === 'explore' && <Link className="text-link" href="/explore/interests">관심사 <Icon name="next" size="small"/></Link>}
    <div className="universe-filters">
     <label className="search icon-search">
      <Icon name="search" size="small"/><span className="sr-only">제목, 장소, 태그 검색</span>

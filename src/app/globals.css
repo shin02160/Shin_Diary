@@ -227,3 +227,11 @@
 .wiki-directory h2{margin-bottom:8px}
 .wiki-directory .chips{margin-bottom:12px}
 .wiki-directory-count{margin-inline-start:4px;font-variant-numeric:tabular-nums}
+
+.activity-timeline .timeline-filters{justify-content:flex-start;margin-block:12px 18px}
+.timeline-filters input[type=date]{min-width:0;max-width:100%;min-height:44px;border:1px solid var(--line);border-radius:10px;padding:4px 8px;background:var(--surface);color:var(--ink)}
+.timeline-list{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+.timeline-list li{padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-inline-start:4px solid var(--universe-tone);border-radius:12px}
+.timeline-list h3{margin:5px 0 0}
+.timeline-list h3 a{display:inline-flex;align-items:center;min-height:44px;text-decoration:underline}
+.timeline-list .universe-meta{margin:3px 0}
