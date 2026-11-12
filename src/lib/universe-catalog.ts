@@ -17,6 +17,7 @@ export interface CatalogItem {
  summary?: string;
  cover?: string;
  url?: string;
+ detailHref?: string;
  entry?: Entry;
  activity?: Activity;
  tags: string[];
@@ -31,7 +32,7 @@ export function buildCatalog(archive?: { activities: Activity[]; entries: Entry[
   for (const item of group.items) result.push({
    key: source + ':' + item.id, kind, type, title: item.title, start: item.start, end: item.end,
    updated: item.updatedAt, location: item.location, detail: item.detail, summary: item.memo,
-   cover: item.cover, url: item.url, tags: [],
+   cover: item.cover, url: item.url, detailHref: '/explore/' + source + '/' + item.id, tags: [],
   });
  }
  for (const entry of archive?.entries ?? []) {

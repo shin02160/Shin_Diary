@@ -4,6 +4,7 @@ import { Icon } from '@/components/icon';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { api, SyncError } from '@/lib/notion-sync';
+import { rememberWiki } from '@/lib/dashboard-preferences';
 import type { WikiBlock, WikiPage } from '@/lib/wiki';
 
 function Blocks({ blocks }: { blocks: WikiBlock[] }) {
@@ -34,7 +35,11 @@ export function NotionWiki({ pageId }: { pageId?: string }) {
  useEffect(() => {
   let alive = true;
   api<WikiPage>('wiki' + (pageId ? '?page=' + encodeURIComponent(pageId) : ''))
-   .then(result => { if (alive) setPage(result); })
+   .then(result => {
+    if (!alive) return;
+    setPage(result);
+    rememberWiki({ id: result.id, title: result.title, root: !result.parent });
+   })
    .catch(failure => {
     if (!alive) return;
     setLoginRequired(failure instanceof SyncError && failure.status === 401);

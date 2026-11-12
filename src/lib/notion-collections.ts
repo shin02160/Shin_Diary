@@ -15,3 +15,18 @@ export type CollectionResult =
  | { state: 'failed'; message: string }
  | { state: 'ready'; items: CollectionItem[]; truncated: boolean };
 export interface NotionCollections { trips: CollectionResult; performances: CollectionResult }
+
+export type CollectionKind = keyof NotionCollections;
+export type TravelSection = {
+ label: string;
+ records: { title: string; url: string; start?: string; end?: string; location?: string; status?: string }[];
+ unavailable?: boolean;
+ truncated?: boolean;
+};
+export interface CollectionDetail {
+ item: CollectionItem;
+ sections?: TravelSection[];
+ cast?: string;
+ setlist?: string;
+ memo?: string;
+}

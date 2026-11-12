@@ -49,6 +49,11 @@ async page => {
  await page.getByRole('link', { name: '기록과 문서 검색', exact: true }).press('Enter');
  await page.waitForURL('**/explore?search=1');
  if (!(await search.evaluate(node => node === document.activeElement))) throw Error('search focus');
- if (await page.locator('.universe-cover').count()) throw Error('fabricated cover');
+ if (await page.locator('img.universe-cover').count()) throw Error('fabricated photo');
+ if (await page.locator('.universe-cover-placeholder').count() !== 2) throw Error('missing default covers');
+ await search.fill('no match');
+ await page.getByRole('button', { name: '조건 초기화' }).press('Enter');
+ await page.getByText('테스트 여행', { exact: true }).waitFor();
+ if (await search.inputValue()) throw Error('search reset');
  return '49 responsive route checks, category/year/search filters, keyboard view toggle and search focus passed';
 }

@@ -3,12 +3,12 @@ import {
  BriefcaseBusiness, Compass, LayoutGrid, List, Menu, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, CircleAlert, CircleCheck,
  CirclePause, CirclePlay, CloudDownload, CloudUpload, Coffee, Download, Eye, EyeOff, FileText,
  Filter, Heart, House, ImagePlus, Inbox, Link2, LockKeyhole, LogIn, LogOut, MapPin, Music2,
- Pencil, Plane, Plus, RotateCcw, Search, SlidersHorizontal, Square, SquareCheck, Upload, UserRound,
+ Pencil, Plane, Plus, RotateCcw, Search, SlidersHorizontal, Star, Square, SquareCheck, Upload, UserRound,
 } from 'lucide-react';
 import type { Category, LifecycleStatus } from '@/lib/types';
 
 const icons = {
- home: House, memories: BookHeart, wiki: BookOpen, calendar: CalendarDays, collection: Bookmark,
+ home: House, memories: BookHeart, wiki: BookOpen, calendar: CalendarDays, collection: Bookmark, favorite: Star,
  resume: CirclePlay, search: Search, settings: SlidersHorizontal, explore: Compass, menu: Menu, grid: LayoutGrid, list: List,
  travel: Plane, concert: Music2, project: BriefcaseBusiness, daily: Coffee,
  interested: Heart, active: CirclePlay, parked: CirclePause, satisfied: CircleCheck,

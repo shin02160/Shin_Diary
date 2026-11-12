@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Icon } from './icon';
 import { CatalogCard, catalogIcons } from './notion-collections';
 import { RecordReminder } from './record-reminder';
+import { useDashboardPreferences } from '@/lib/dashboard-preferences';
 import { useArchive } from '@/lib/local-store';
 import { api } from '@/lib/notion-sync';
 import { buildCatalog, catalogLabels, filterCatalog, type CatalogKind } from '@/lib/universe-catalog';
@@ -23,6 +24,7 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
  remote?: boolean;
 }) {
  const local = useArchive();
+ const preferences = useDashboardPreferences();
  const [archive, setArchive] = useState<Result<Archive>>();
  const [collections, setCollections] = useState<Result<NotionCollections>>();
  const [attempt, setAttempt] = useState(0);
@@ -61,6 +63,11 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
  }))].sort().reverse();
  const tags = [...new Set(items.flatMap(item => item.tags))].sort((a, b) => a.localeCompare(b, 'ko'));
  const shown = filterCatalog(items, kind, query, year, tag);
+ const itemsByKey = new Map(items.map(item => [item.key, item]));
+ const favorites = preferences.favorites.flatMap(key => {
+  const item = itemsByKey.get(key);
+  return item ? [item] : [];
+ });
  const continuing = items.find(item => item.activity && !item.activity.isArchived &&
   (item.activity.lifecycleStatus === 'active' || item.activity.lifecycleStatus === 'parked'));
  const hasTruncatedSource = Object.values(collectionData ?? {}).some(value => value.state === 'ready' && value.truncated);
@@ -75,9 +82,8 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
   {mode === 'home' ? <>
    <section className="universe-hero">
     <div className="universe-hero-copy">
-     <span className="universe-hero-label">개인 WIKI</span>
      <h1>나의 모든 기록과 이야기,<br/><span>Youngshin&apos;s Universe</span></h1>
-     <p>여행, 공연, 일상과 프로젝트까지.<br/>나의 기록이 쌓이는 개인 위키.</p>
+     <p>여행, 공연, 일상과 프로젝트를 담은 개인 위키.</p>
     </div>
     <div className="universe-night" aria-hidden="true">
      <span className="universe-moon"/><span className="universe-star star-top"/><span className="universe-star star-left"/><span className="universe-star star-bottom"/>
@@ -93,15 +99,27 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
      <Link className="universe-space universe-tone-project" href="/wiki"><Icon name="wiki" size="large"/><strong>개인 WIKI</strong></Link>
     </div>
    </section>
-   {continuing && <section aria-labelledby="universe-continue">
-    <div className="universe-heading"><h2 id="universe-continue">이어서 보기</h2><Link href="/continue">모두 보기 <Icon name="next" size="small"/></Link></div>
-    <CatalogCard item={continuing}/>
-   </section>}
    <section aria-labelledby="universe-recent">
     <div className="universe-heading"><h2 id="universe-recent"><Icon name="archive" size="small"/> 최근 기록</h2><Link href="/explore">모두 보기 <Icon name="next" size="small"/></Link></div>
     {items.length > 0 && <div className="universe-cards universe-recent">{items.slice(0, 6).map(item => <CatalogCard key={item.key} item={item} compact/>)}</div>}
     {!loading && items.length === 0 && !errors.length && <p className="universe-muted">아직 표시할 기록이 없어요.</p>}
    </section>
+   {favorites.length > 0 && <section aria-labelledby="universe-favorites">
+    <div className="universe-heading"><h2 id="universe-favorites"><Icon name="favorite" size="small"/> 즐겨찾기</h2></div>
+    <div className="universe-cards universe-recent">{favorites.map(item => <CatalogCard key={item.key} item={item} compact/>)}</div>
+   </section>}
+   {continuing && <section aria-labelledby="universe-continue">
+    <div className="universe-heading"><h2 id="universe-continue"><Icon name="resume" size="small"/> 이어서 하기</h2>
+     <Link href="/continue">모두 보기 <Icon name="next" size="small"/></Link></div>
+    <CatalogCard item={continuing}/>
+   </section>}
+   {preferences.recentWiki.length > 0 && <section aria-labelledby="universe-wiki-recent">
+    <div className="universe-heading"><h2 id="universe-wiki-recent"><Icon name="wiki" size="small"/> 최근 WIKI 문서</h2>
+     <Link href="/wiki">개인 WIKI <Icon name="next" size="small"/></Link></div>
+    <ul className="universe-wiki-recent">{preferences.recentWiki.slice(0, 5).map(page => <li key={page.id}>
+     <Link href={page.root ? '/wiki' : '/wiki?page=' + page.id}><Icon name="file" size="small"/> <span>{page.title}</span><Icon name="next" size="small"/></Link>
+    </li>)}</ul>
+   </section>}
   </> : <>
    <div className="universe-heading"><h1>{mode === 'wiki' ? '개인 WIKI' : '나의 기록 탐색'}</h1></div>
    <div className="universe-filters">
@@ -135,7 +153,17 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
     </div>
     {shown.length > limit && <button className="button" type="button" onClick={() => setLimit(value => value + PAGE)}>기록 더 보기</button>}
    </>}
-   {!loading && !shown.length && !errors.length && <p className="universe-muted">{items.length ? '조건에 맞는 기록이 없어요.' : '아직 표시할 기록이 없어요.'}</p>}
+   {!loading && !shown.length && <>
+    <p className="universe-muted" role="status">{items.length || query || year || tag || kind !== 'all'
+     ? '조건에 맞는 기록이 없어요.' : errors.length ? '일부 기록을 불러오지 못했어요.' : '아직 표시할 기록이 없어요.'}</p>
+    {(query || year || tag || kind !== 'all') && <button className="button" type="button" onClick={() => {
+     setQuery('');
+     setKind('all');
+     setYear('');
+     setTag('');
+     setLimit(PAGE);
+    }}>조건 초기화</button>}
+   </>}
   </>}
   {mode !== 'home' && hasTruncatedSource && <p className="universe-muted">일부 데이터 소스는 최근 항목 500개까지 표시합니다.</p>}
   {loading && <p role="status" className="universe-muted">기록을 불러오는 중…</p>}

@@ -199,3 +199,26 @@
 .universe-recent .universe-card{position:relative}
 .universe-recent h3 a::after{content:'';position:absolute;inset:0}
 .universe-recent .universe-card:focus-within{outline:2px solid var(--icon-focus);outline-offset:-2px}
+
+.universe-cover-placeholder{display:grid;place-items:center;color:var(--universe-accent);background:var(--universe-tone)}
+.collection-record{max-width:760px;margin-inline:auto}
+.collection-record .universe-cover{max-height:340px;border-radius:16px}
+.collection-record-header{margin-block:12px 22px}
+.collection-record-header h1{margin:8px 0}
+.collection-record .resume-panel{padding:16px}
+.collection-record .resume-panel ul{margin:0;padding-inline-start:20px}
+.collection-record .resume-panel li{padding-block:4px}
+.collection-record .resume-panel a{min-height:44px;display:inline-flex;align-items:center;text-decoration:underline}
+
+.universe-hero{min-height:162px;padding-block:20px}
+.universe-card-heading{display:flex;align-items:center;justify-content:space-between;gap:4px}
+.universe-card-heading h3,.universe-card-heading h1{min-width:0}
+.universe-favorite{position:relative;z-index:1;flex:none;display:grid;place-items:center;width:44px;height:44px;padding:0;color:var(--purple);background:transparent;border:0;border-radius:10px}
+.universe-favorite:hover{background:var(--lavender)}
+.universe-favorite[aria-pressed=true]{color:#855414;background:var(--cream)}
+.universe-favorite[aria-pressed=true] svg{fill:#f3cf78}
+.universe-wiki-recent{padding:0;margin:0;list-style:none;border:1px solid var(--line);border-radius:15px;background:var(--surface)}
+.universe-wiki-recent li+li{border-top:1px solid var(--line)}
+.universe-wiki-recent a{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;min-height:44px;padding:8px 12px}
+.universe-wiki-recent a:hover{background:var(--lavender)}
+@media(max-width:760px){.universe-hero{min-height:132px;padding:12px 16px}.universe-hero h1{margin-bottom:5px}}
