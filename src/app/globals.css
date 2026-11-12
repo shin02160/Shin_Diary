@@ -222,3 +222,8 @@
 .universe-wiki-recent a{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;min-height:44px;padding:8px 12px}
 .universe-wiki-recent a:hover{background:var(--lavender)}
 @media(max-width:760px){.universe-hero{min-height:132px;padding:12px 16px}.universe-hero h1{margin-bottom:5px}}
+
+.wiki-directory{margin-block:20px 24px}
+.wiki-directory h2{margin-bottom:8px}
+.wiki-directory .chips{margin-bottom:12px}
+.wiki-directory-count{margin-inline-start:4px;font-variant-numeric:tabular-nums}
