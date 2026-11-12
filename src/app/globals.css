@@ -235,3 +235,25 @@
 .timeline-list h3{margin:5px 0 0}
 .timeline-list h3 a{display:inline-flex;align-items:center;min-height:44px;text-decoration:underline}
 .timeline-list .universe-meta{margin:3px 0}
+
+.calendar-type-exercise{--calendar-tag:#e4f4eb;--calendar-ink:#235b42}
+.calendar-type-appointment{--calendar-tag:#fae8ee;--calendar-ink:#792c50}
+.calendar-type-concert{--calendar-tag:#eee7fb;--calendar-ink:#51347c}
+.calendar-type-travel{--calendar-tag:#e3f0f8;--calendar-ink:#225a76}
+.calendar-type-work{--calendar-tag:#fff0d9;--calendar-ink:#694b23}
+.calendar-type-other{--calendar-tag:#eeedf0;--calendar-ink:#514959}
+.calendar-marker[class*="calendar-type-"],.event-label[class*="calendar-type-"]{background:var(--calendar-tag,#eee8f2);color:var(--calendar-ink,#453952)}
+.calendar-completed{margin-inline-start:6px;background:#e4f4eb;color:#235b42}
+.calendar-marker{display:block;max-width:100%;min-width:0;white-space:nowrap}
+@media(max-width:430px){.calendar-marker{font-size:10px;padding-inline:1px}.calendar-marker .ui-icon,.calendar-marker .calendar-title{display:none}}
+
+.wiki-archive{max-width:760px;margin-inline:auto}
+.wiki-archive h1{font-size:clamp(24px,5vw,34px);overflow-wrap:anywhere}
+.wiki-archive h2{margin-bottom:8px}
+.wiki-archive-categories{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.wiki-archive-categories .button{padding:7px;min-width:0;white-space:normal}
+.wiki-archive-categories [aria-pressed=true]{background:var(--lavender);color:var(--purple)}
+.wiki-archive .universe-wiki-recent + .universe-wiki-recent{margin-top:8px}
+.wiki-archive .universe-wiki-recent span{overflow-wrap:anywhere;min-width:0}
+.wiki-record-date{display:block;color:var(--muted);font-weight:400}
+.wiki-entry-photo{width:100%;height:auto;object-fit:contain}

@@ -27,3 +27,12 @@ test('wiki directory counts real child pages once and groups by explicit labels'
  assert.deepEqual(result.all.map(document => document.id), ['a', 'd', 'f', 'h']);
  assert.deepEqual(wikiDirectory([]), { all: [], groups: [] });
 });
+
+test('wiki directory separates system docs and media analyses without guessing unrelated titles', () => {
+ const result = wikiDirectory([
+  block('a', 'child_page', 'Shin_Diary · 설정 가이드'),
+  block('b', 'child_page', '2026 YouTube · YouTube Music 아카이브 분석'),
+  block('c', 'child_page', '제목만 있는 문서'),
+ ]);
+ assert.deepEqual(result.all.map(document => document.category), ['system', 'collection', 'uncategorized']);
+});

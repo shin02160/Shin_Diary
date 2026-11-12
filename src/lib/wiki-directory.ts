@@ -1,6 +1,7 @@
 import type { WikiBlock } from './wiki.ts';
 
 const categories = [
+ { key: 'system', label: '시스템 관리', aliases: ['시스템 관리', '개발 문서', '시스템 설정'] },
  { key: 'travel', label: '여행', aliases: ['여행', 'travel'] },
  { key: 'concert', label: '공연', aliases: ['공연', 'concert'] },
  { key: 'daily', label: '일상 & 다이어리', aliases: ['일상 & 다이어리', '일상', '다이어리', 'daily', 'diary'] },
@@ -13,6 +14,8 @@ export interface WikiDocument { id: string; title: string; category: CategoryKey
 
 function namedCategory(text: string, heading: boolean) {
  const title = text.trim().toLowerCase();
+ if (/youtube|유튜브/.test(title) && /분석|아카이브|analytics/.test(title)) return 'collection';
+ if (/notion 연동 설정|검증 체크리스트|^(?:shin_diary|개발)\s*[·:-]/.test(title)) return 'system';
  return categories.find(category => category.aliases.some(alias =>
   title === alias || (!heading && (
    title.startsWith('[' + alias + ']') || title.startsWith(alias + ':') ||
