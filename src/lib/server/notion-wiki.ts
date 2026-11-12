@@ -1,5 +1,5 @@
 import { AppError } from './config.ts';
-import type { Transport } from './notion-client.ts';
+import { NotionError, type Transport } from './notion-client.ts';
 import type { WikiBlock, WikiPage, WikiText } from '../wiki.ts';
 
 type Rich = { plain_text?: string; href?: string };
@@ -31,12 +31,34 @@ const types = new Set(['paragraph', 'heading_1', 'heading_2', 'heading_3', 'bull
  'numbered_list_item', 'to_do', 'quote', 'callout', 'toggle', 'code', 'divider', 'child_page', 'bookmark',
  'column', 'column_list', 'synced_block']);
 
-export async function readWiki(api: Transport, rootId: string, pageId?: string): Promise<WikiPage> {
- const root = normalized(rootId);
- if (!root) throw new AppError(503, '서버에 개인 위키의 Notion 페이지 ID를 설정해 주세요.');
- const id = pageId ? normalized(pageId) : root;
+export function wikiRootId(value: string | undefined) {
+ const trimmed = value?.trim();
+ if (!trimmed) throw new AppError(503, '개인 위키 시작 페이지가 설정되지 않았습니다. 서버의 NOTION_WIKI_PAGE_ID를 설정해 주세요.');
+ const id = normalized(trimmed);
+ if (!id) throw new AppError(503, '개인 위키 시작 페이지 ID 형식이 올바르지 않습니다. NOTION_WIKI_PAGE_ID에 페이지 ID를 입력해 주세요.');
+ return id;
+}
+
+async function readWikiResource<T>(api: Transport, path: string, isRoot: boolean): Promise<T> {
+ try {
+  return await api.call<T>(path);
+ } catch (error) {
+  if (!(error instanceof NotionError)) throw error;
+  if (error.upstreamStatus === 401) throw new AppError(502, 'Notion 연결 인증에 실패했습니다. 서버의 NOTION_TOKEN을 확인해 주세요.');
+  if (error.upstreamStatus === 403) throw new AppError(502, 'Notion에서 위키 읽기를 허용하지 않았습니다. 연결의 읽기 권한을 확인해 주세요.');
+  if (error.upstreamStatus === 404) {
+   if (isRoot) throw new AppError(503, 'Notion에서 위키 시작 페이지를 열 수 없습니다. 페이지 ID와 Notion 연결 공유를 확인해 주세요.');
+   throw new AppError(404, '이 위키 페이지를 열 수 없습니다. 페이지가 존재하고 Notion 연결에 공유되어 있는지 확인해 주세요.');
+  }
+  throw error;
+ }
+}
+
+export async function readWiki(api: Transport, rootId: string | undefined, pageId?: string): Promise<WikiPage> {
+ const root = wikiRootId(rootId);
+ const id = pageId === undefined ? root : normalized(pageId);
  if (!id) throw new AppError(400, '올바른 위키 페이지를 선택해 주세요.');
- const loadPage = (key: string) => api.call<Page>('/pages/' + key);
+ const loadPage = (key: string) => readWikiResource<Page>(api, '/pages/' + key, key === root);
  const current = await loadPage(id);
  if (current.object !== 'page' || current.archived || current.in_trash) throw new AppError(404, '위키 페이지를 찾지 못했습니다.');
  const parentOf = (page: Page) => page.parent?.type === 'page_id' ? normalized(page.parent.page_id ?? '') : '';
@@ -54,7 +76,7 @@ export async function readWiki(api: Transport, rootId: string, pageId?: string):
   const result: WikiBlock[] = [];
   let cursor: string | undefined;
   do {
-   const list: BlockList = await api.call('/blocks/' + blockId + '/children?page_size=100' + (cursor ? '&start_cursor=' + encodeURIComponent(cursor) : ''));
+   const list: BlockList = await readWikiResource<BlockList>(api, '/blocks/' + blockId + '/children?page_size=100' + (cursor ? '&start_cursor=' + encodeURIComponent(cursor) : ''), id === root);
    for (const block of list.results) {
     if (remaining-- <= 0) { truncated = true; return result; }
     const key = normalized(block.id);

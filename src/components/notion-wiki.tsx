@@ -49,13 +49,15 @@ export function NotionWiki({ pageId }: { pageId?: string }) {
    {error ? <><p role="alert">{error}</p>{loginRequired ? <Link className="button" href="/settings">설정에서 로그인</Link> : <button className="button" type="button" onClick={() => {
     setError('');
     setAttempt(value => value + 1);
-   }}>다시 불러오기</button>}</> : !page ? <p role="status">Notion 페이지를 불러오는 중…</p> : <>
+   }}>다시 불러오기</button>} <Link className="text-link" href={pageId ? '/wiki' : '/explore'}>{pageId ? '위키 시작 페이지' : '기록 탐색'}</Link></> : !page ? <p role="status">Notion 페이지를 불러오는 중…</p> : <>
     <div className="form-actions">
      {page.parent && <Link className="button" href={'/wiki?page=' + page.parent}>상위 페이지</Link>}
      {page.url && <a className="text-link" href={page.url} target="_blank" rel="noopener noreferrer">Notion 원본 열기 <Icon name="external" size="small"/></a>}
     </div>
     {page.truncated && <p>일부 내용은 Notion 원본에서 볼 수 있습니다.</p>}
-    <article className="resume-panel wiki-content"><Blocks blocks={page.blocks}/></article>
+    <article className="resume-panel wiki-content">
+     {page.blocks.length ? <Blocks blocks={page.blocks}/> : <p>이 페이지에 표시할 본문이 없습니다.</p>}
+    </article>
    </>}
   </>
  );
