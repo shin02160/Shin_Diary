@@ -1,6 +1,6 @@
 import { dateKey } from './dates.ts';
 import type { CatalogItem } from './universe-catalog.ts';
-import type { ActivityView } from './activity-view.ts';
+import type { ActivityStatus, ActivityView } from './activity-view.ts';
 
 export function timelineDay(value: ActivityView['startAt']) {
  if (!value) return undefined;
@@ -52,4 +52,15 @@ export function timelineYearCounts(items: CatalogItem[], today: string, matches 
   years.set(year, counts);
  }
  return years;
+}
+
+/** Display lifecycle derived from the end of the experience, without mutating Notion source status. */
+export function statusByElapsedDate(item: Pick<ActivityView, 'startAt' | 'endAt' | 'status'>, currentDay: string): ActivityStatus {
+ if (item.status === 'cancelled') return 'cancelled';
+ const start = timelineDay(item.startAt);
+ if (!start) return item.status;
+ const end = timelineDay(item.endAt) ?? start;
+ if (end < currentDay) return 'done';
+ if (start > currentDay) return 'planned';
+ return item.status;
 }
