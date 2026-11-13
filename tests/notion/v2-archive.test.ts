@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { deduplicateActivities } from '../../src/lib/activity-view.ts';
-import { interestHistory } from '../../src/lib/interest-history.ts';
+import { tasteClues, tasteEvidence } from '../../src/lib/interest-history.ts';
 import { buildCatalog, calendarCatalogItem } from '../../src/lib/universe-catalog.ts';
 import type { ArchiveCalendarEvent } from '../../src/lib/calendar/archive.ts';
 
@@ -22,22 +22,28 @@ test('shared calendar projection preserves time, verifies participation separate
  assert.deepEqual(deduplicateActivities([first, duplicate, repeat]).map(item => item.key), ['cal-a', 'cal-c']);
 });
 
-test('taste history cites records across years and excludes schedule-only, future and unrelated material', () => {
+test('taste evidence spans years, honours browser decisions and excludes schedules, plans and generated reviews', () => {
  const entries = buildCatalog({ activities: [], entries: [
   { id: 'past', title: '엔플라잉 공연', category: 'Concert', date: '2023-10-31' },
   { id: 'current', title: '&Con5 도쿄 여행', category: 'Travel', date: '2026-10-31' },
+  { id: 'manual', title: '합정 나들이', category: 'Daily', date: '2026-11-02' },
+  { id: 'gpt-monthly-review-2026-10', title: '엔플라잉 GPT 회고', category: 'Daily', date: '2026-10-01' },
   { id: 'unrelated', title: '세븐틴', category: 'Concert', date: '2026-10-31' },
   { id: 'future', title: '엔플라잉', category: 'Concert', date: '2026-12-01' },
  ].map(({ id, title, category, date }) => ({
-  id, title, category: category as 'Travel' | 'Concert', content: '', tags: [],
+  id, title, category: category as 'Travel' | 'Concert' | 'Daily', content: '', tags: [],
   occurredAt: { kind: 'date', date: date as `${number}-${number}-${number}` }, createdAt: date,
  })) });
  const calendar = calendarCatalogItem({ ...schedule, title: '엔플라잉' }, Date.parse('2026-11-13'));
- const result = interestHistory({
-  id: 'n', name: 'N.Flying', tags: [], relatedPageIds: [], moreRelations: false,
- }, [...entries, calendar], '2026', '2026-11-13');
- assert.match(result?.label ?? '', /다시 나타남.*새 유형/);
- assert.deepEqual(result?.moments.map(row => [row.item.sourcePageId, row.evidence, row.confirmed]), [['current', '제목', false]]);
+ const interest = { id: 'n', name: 'N.Flying', tags: [], relatedPageIds: [], moreRelations: false };
+ const rows = tasteEvidence(interest, [...entries, calendar], '2026-11-13', ['entry:manual']);
+ assert.deepEqual(rows.map(row => [row.item.sourcePageId, row.evidence, row.confirmed]),
+  [['past', '제목', false], ['current', '제목', false], ['manual', '직접 승인', true]]);
+ const clues = tasteClues(rows);
+ assert.deepEqual([clues.firstDay, clues.years, clues.gaps, clues.kinds], ['2023-10-31', ['2023', '2026'], [['2024', '2025']], ['concert', 'travel', 'daily']]);
+ assert.deepEqual(clues.labels.get('entry:past'), ['기록에서 처음 확인됨']);
+ assert.deepEqual(clues.labels.get('entry:current'), ['2023년 이후 관련 기록이 없다가 다시 나타남', '여행 기록으로 처음 나타남']);
+ assert.deepEqual(tasteEvidence(interest, entries, '2026-11-13', [], ['entry:current']).map(row => row.item.sourcePageId), ['past']);
 });
 
 test('a written record confirms the experience while an elapsed schedule alone does not', async () => {

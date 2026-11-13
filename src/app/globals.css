@@ -281,3 +281,16 @@
 .taste-moments{border-inline-start:2px solid var(--line);margin-inline-start:6px;padding-inline-start:12px}
 .taste-moments h4{margin:4px 0;overflow-wrap:anywhere}
 .taste-moments a{text-decoration:underline}
+
+.interest-cards .universe-card{display:grid;grid-template-columns:76px minmax(0,1fr);align-items:center}
+.interest-cards :is(.universe-cover,.universe-type-thumbnail){width:62px;height:55px;margin-inline-start:10px;border-radius:9px;object-fit:cover}
+.activity-timeline .timeline-list h4{margin:4px 0;overflow-wrap:anywhere}
+#interest-records ~ .chips{margin-block:8px 14px}
+.taste-clues{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-block:12px}
+.taste-clues .taste-topic{margin:0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.taste-clues h3{margin:0 0 6px}
+.taste-clues ul{margin:0;padding-inline-start:18px}
+.taste-year{margin:22px 0 8px}
+.taste-moments li.taste-suggested{border-style:dashed;border-inline-start-style:solid}
+.taste-moments .universe-cover{max-height:220px;border-radius:10px;margin-block:6px}
+.taste-moments .universe-kind{text-decoration:none}

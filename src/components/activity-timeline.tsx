@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { MemoryLinks } from './memory-links';
 import { useEffect, useState } from 'react';
 import { dayLabel } from '@/lib/dates';
@@ -12,7 +11,7 @@ import { type ArchiveCalendarEvent } from '@/lib/calendar/archive';
 import { reviewMonth, gptReviewId } from '@/lib/wiki-review';
 import { scheduleLabels } from '@/lib/calendar/schedule-state';
 import { calendarType, calendarTypeLabels, type CalendarType } from '@/lib/calendar/classification';
-import { interestHistory } from '@/lib/interest-history';
+import { TasteJourney } from './taste-journey';
 import type { InterestResult } from '@/lib/interests';
 import { today } from '@/lib/local-store';
 import { api } from '@/lib/notion-sync';
@@ -103,7 +102,6 @@ function CalendarCategory({ item, inferred }: { item: TimelineRecord; inferred: 
 }
 
 export function ActivityTimeline({ items: catalog, loading: catalogLoading, failed: catalogFailed, stats }: { items: CatalogItem[]; loading: boolean; failed: boolean; stats: boolean }) {
- const searchParams = useSearchParams();
  const [sourceAttempt, setSourceAttempt] = useState(0);
  const [sources, setSources] = useState<{ items: TimelineRecord[]; errors: string[]; interests?: InterestResult }>();
  useEffect(() => {
@@ -152,8 +150,6 @@ export function ActivityTimeline({ items: catalog, loading: catalogLoading, fail
  }))].sort().reverse();
  const calendarMatches = timelineCalendarMatches(items);
  const [insightYear, setInsightYear] = useState('');
- const [selectedTopic, setSelectedTopic] = useState<string>();
- const topic = selectedTopic ?? searchParams.get('interest') ?? '';
  const experienceItems = items.filter(item => !item.entry || (!reviewMonth(item.entry) &&
   item.entry.id !== gptReviewId(timelineDay(item.startAt)?.slice(0, 7) ?? '')));
  const insightRows = timelineRows(experienceItems).dated;
@@ -172,11 +168,6 @@ export function ActivityTimeline({ items: catalog, loading: catalogLoading, fail
  const confirmed = insightUnique.filter(({ item }) => experienceConfirmed(item, currentDay, reviewedCalendars));
  const upcoming = insightRows.filter(({ item, day }) => item.status !== 'cancelled' && item.sourceType !== 'entry' &&
   item.sourceType !== 'timeline' && (item.sourceType === 'calendar' ? item.status === 'planned' : day >= currentDay && item.status !== 'done')).sort((a, b) => a.day.localeCompare(b.day));
- const interestTrends = stats ? [] : (sources?.interests?.interests ?? []).flatMap(interest => {
-  if (topic && interest.id !== topic) return [];
-  const history = interestHistory(interest, items, selectedInsightYear ?? '', currentDay);
-  return history ? [{ interest, ...history }] : [];
- });
  const confirmedCategories = Object.entries(catalogLabels).map(([key, label]) => ({
   label: key === 'uncategorized' ? '기타 활동' : label,
   count: confirmed.filter(({ item }) => !item.experienceVerified && item.category === key).length,
@@ -225,34 +216,7 @@ export function ActivityTimeline({ items: catalog, loading: catalogLoading, fail
    setSources(undefined);
    setSourceAttempt(value => value + 1);
   }}>연대기 자료 다시 불러오기</button>}
-  {!stats && <section className="resume-panel" aria-labelledby="taste-topics">
-   <h2 id="taste-topics">이 시기의 취향</h2>
-   <div className="universe-filter-row timeline-filters">
-    <label>연도 <select value={selectedInsightYear ?? ''} onChange={event => setInsightYear(event.target.value)}>
-     {years.map(value => <option key={value}>{value}</option>)}
-    </select></label>
-    <label>관심사 <select value={topic} onChange={event => setSelectedTopic(event.target.value)}>
-     <option value="">전체</option>
-     {sources?.interests?.interests.map(interest => <option value={interest.id} key={interest.id}>{interest.name}</option>)}
-    </select></label>
-   </div>
-   {loading ? <p role="status">기록을 불러오는 중…</p> : !sources?.interests ? <p role="alert">관심사를 불러오지 못했어요.</p> : <>
-    {failed && <p role="status">조회할 수 있는 자료만 표시해요.</p>}
-    {!interestTrends.length && <p>이 해의 취향을 살펴볼 기록이 부족해요. <Link href="/explore/interests">관심사에서 연결 후보 보기</Link></p>}
-    {interestTrends.map(({ interest, label, moments }) => <section key={interest.id} className="taste-topic">
-     <h3><Link href={'/explore/interests?id=' + encodeURIComponent(interest.id)}>{interest.name}</Link></h3>
-     <p>{label}</p>
-     <ol className="timeline-list taste-moments">
-      {moments.map(({ item, day, evidence, confirmed }) => <li key={item.key}>
-       <time dateTime={day} className="universe-meta">{dayLabel(day)}</time>
-       <h4><Link href={item.detailHref ?? item.originalUrl ?? '/explore'}>{item.title}</Link></h4>
-       {item.summary?.trim() && <p className="universe-excerpt">{item.summary.trim().slice(0, 140)}{item.summary.trim().length > 140 && '…'}</p>}
-       <p className="universe-meta">{confirmed ? '확정 연결' : '추천 연결'} · {evidence}</p>
-      </li>)}
-     </ol>
-    </section>)}
-   </>}
-  </section>}
+  {!stats && <TasteJourney items={items} interests={sources?.interests?.interests} loading={loading} errors={[...(catalogFailed ? ['일부 기록을 불러오지 못했어요.'] : []), ...(sources?.errors ?? [])]}/>}
   {stats && <section className="resume-panel" aria-labelledby="timeline-insights">
    <h2 id="timeline-insights">연도별 활동 요약</h2>
    {loading ? <p role="status">기록을 불러오는 중…</p> : <>
