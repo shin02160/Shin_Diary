@@ -48,7 +48,7 @@ export function CatalogCard({ item, compact = false }: { item: CatalogItem; comp
     {start && <p className="universe-meta"><Icon name="calendar" size="small"/> <time dateTime={item.start}>{dayLabel(start)}</time>{end && end !== start && <> ~ <time dateTime={item.end}>{dayLabel(end)}</time></>}</p>}
     {item.location && <p className="universe-meta"><Icon name="place" size="small"/> {item.location}</p>}
     {!item.detailHref && !compact && item.detail && <p className="universe-meta">{item.detail}</p>}
-    {!item.detailHref && excerpt && (!compact || item.entry) && <p className="universe-excerpt">{excerpt}{(item.summary?.length ?? 0) > 100 && '…'}</p>}
+    {(!item.detailHref || item.entry) && excerpt && (!compact || item.entry) && <p className="universe-excerpt">{excerpt}{(item.summary?.length ?? 0) > 100 && '…'}</p>}
     {!compact && item.activity && (item.activity.nextStep || item.activity.lastProgress) && <details>
      <summary>이어서 하기</summary>
      {item.activity.lastProgress && <p className="universe-excerpt">{item.activity.lastProgress}</p>}

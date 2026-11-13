@@ -25,6 +25,13 @@ export interface CatalogItem extends ActivityView {
 }
 const kinds = { Travel: 'travel', Concert: 'concert', Daily: 'daily', Projects: 'project' } as const;
 
+export function mergeCatalogEntries(remote: Entry[], local: Entry[]) {
+ const ids = new Set(remote.map(entry => entry.id));
+ const pages = new Set(remote.map(entry => entry.notion?.pageId.replaceAll('-', '').toLowerCase()).filter(Boolean));
+ return [...remote, ...local.filter(entry => !ids.has(entry.id) &&
+  (!entry.notion || !pages.has(entry.notion.pageId.replaceAll('-', '').toLowerCase())))];
+}
+
 export function buildCatalog(archive?: { activities: Activity[]; entries: Entry[] }, collections?: NotionCollections): CatalogItem[] {
  const result: CatalogItem[] = [];
  for (const [source, kind, type] of [['trips', 'travel', '여행'], ['performances', 'concert', '공연']] as const) {
@@ -43,6 +50,7 @@ export function buildCatalog(archive?: { activities: Activity[]; entries: Entry[
   if (entry.isSample) continue;
   result.push({
    sourceType: 'entry', sourcePageId: entry.notion?.pageId || entry.id, category: kinds[entry.category], interestIds: [],
+   detailHref: entry.notion?.pageId ? '/wiki?entry=' + encodeURIComponent(entry.id) : undefined,
    startAt: entry.occurredAt, status: 'unknown', originalUrl: notionActivityUrl(entry.notion?.pageId),
    key: 'entry:' + entry.id, kind: kinds[entry.category], type: '기록',
    title: entry.title || entry.content.trim().slice(0, 64) || (entry.photo ? '사진 기록' : '링크 기록'),

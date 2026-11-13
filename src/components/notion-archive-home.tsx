@@ -10,7 +10,7 @@ import { RecordReminder } from './record-reminder';
 import { useDashboardPreferences } from '@/lib/dashboard-preferences';
 import { useArchive } from '@/lib/local-store';
 import { api } from '@/lib/notion-sync';
-import { buildCatalog, catalogLabels, filterCatalog, type CatalogKind } from '@/lib/universe-catalog';
+import { buildCatalog, mergeCatalogEntries, catalogLabels, filterCatalog, type CatalogKind } from '@/lib/universe-catalog';
 import type { Activity, Entry } from '@/lib/types';
 import type { NotionCollections } from '@/lib/notion-collections';
 
@@ -28,6 +28,7 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
 }) {
  const local = useArchive();
  const preferences = useDashboardPreferences();
+ const [notionEntries, setNotionEntries] = useState<Result<{ entries: Entry[] }>>();
  const [archive, setArchive] = useState<Result<Archive>>();
  const [collections, setCollections] = useState<Result<NotionCollections>>();
  const [attempt, setAttempt] = useState(0);
@@ -44,6 +45,7 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
    void api<T>(path).then(data => { if (alive) update({ data }); })
     .catch(error => { if (alive) update({ error: error instanceof Error ? error.message : '기록을 불러오지 못했습니다.' }); });
   };
+  load<{ entries: Entry[] }>('wiki-entries', setNotionEntries);
   if (remote) load<Archive>('archive', setArchive);
   load<NotionCollections>('collections', setCollections);
   return () => { alive = false; };
@@ -51,11 +53,16 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
 
  const collectionData = collections && 'data' in collections ? collections.data : undefined;
  const archiveData = remote ? archive && 'data' in archive ? archive.data : undefined : local.ready ? local : undefined;
- const items = buildCatalog(archiveData, collectionData);
- const loading = (remote ? !archive : !local.ready) || !collections;
+ const remoteEntries = notionEntries && 'data' in notionEntries ? notionEntries.data.entries : [];
+ const items = buildCatalog({
+  activities: archiveData?.activities ?? [],
+  entries: mergeCatalogEntries(remoteEntries, archiveData?.entries ?? []),
+ }, collectionData);
+ const loading = (remote ? !archive : !local.ready) || !collections || !notionEntries;
  const failedCollections = Object.entries(collectionData ?? {}).filter(([, value]) => value.state === 'failed');
  const sourceNames = { trips: '여행', performances: '공연' } as const;
  const errors = [
+  notionEntries && 'error' in notionEntries ? notionEntries.error : '',
   archive && 'error' in archive ? archive.error : '',
   collections && 'error' in collections ? collections.error : '',
   ...failedCollections.map(([key, value]) => value.state === 'failed' ? sourceNames[key as keyof typeof sourceNames] + ' · ' + value.message : ''),
@@ -77,6 +84,7 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
 
  function reload() {
   setArchive(undefined);
+  setNotionEntries(undefined);
   setCollections(undefined);
   setAttempt(value => value + 1);
  }
@@ -159,8 +167,8 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
     {shown.length > limit && <button className="button" type="button" onClick={() => setLimit(value => value + PAGE)}>기록 더 보기</button>}
    </>}
    {!loading && !shown.length && <>
-    <p className="universe-muted" role="status">{items.length || query || year || tag || kind !== 'all'
-     ? '조건에 맞는 기록이 없어요.' : errors.length ? '일부 기록을 불러오지 못했어요.' : '아직 표시할 기록이 없어요.'}</p>
+    <p className="universe-muted" role="status">{errors.length ? '일부 기록을 불러오지 못했어요.' : items.length || query || year || tag || kind !== 'all'
+     ? '조건에 맞는 기록이 없어요.' : '아직 표시할 기록이 없어요.'}</p>
     {(query || year || tag || kind !== 'all') && <button className="button" type="button" onClick={() => {
      setQuery('');
      setKind('all');

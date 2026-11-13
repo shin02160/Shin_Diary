@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/notion-sync';
@@ -33,7 +34,13 @@ export function WikiArchive({ blocks = [], entryId, month }: { blocks?: WikiBloc
  const [error, setError] = useState('');
  const [attempt, setAttempt] = useState(0);
  const [query, setQuery] = useState('');
- const [selected, setSelected] = useState<(typeof categories)[number]['key']>('daily');
+ const params = useSearchParams();
+ const selected = categories.find(item => item.key === params.get('category'))?.key ?? 'daily';
+ function selectCategory(key: typeof selected) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('category', key);
+  window.history.pushState(null, '', url);
+ }
  useEffect(() => {
   let active = true;
   void api<{ entries: Entry[] }>('wiki-entries').then(result => {
@@ -116,11 +123,9 @@ export function WikiArchive({ blocks = [], entryId, month }: { blocks?: WikiBloc
  const monthly = reviews[0]?.entry;
  const moments = entries.filter(entry => entry.category === 'Travel' || entry.category === 'Concert').slice(0, 4);
  const search = query.trim().toLowerCase();
- const recent = search ? entries.filter(entry =>
-  [entryTitle(entry), entry.content, entry.place, dateKey(entry.occurredAt), ...entry.tags].some(value => value?.toLowerCase().includes(search))) : entries.slice(0, 8);
  const category = categories.find(item => item.key === selected)!;
- const categoryEntries = entries.filter(entry => entry.category === category.entry);
- const categoryDocs = documents.filter(doc => doc.category === selected || (selected === 'collection' && doc.category === 'project'));
+ const categoryEntries = entries.filter(entry => entry.category === category.entry && [entryTitle(entry), entry.content, entry.place, dateKey(entry.occurredAt), ...entry.tags].some(value => value?.toLowerCase().includes(search)));
+ const categoryDocs = documents.filter(doc => (doc.category === selected || (selected === 'collection' && doc.category === 'project')) && doc.title.toLowerCase().includes(search));
  const system = documents.filter(doc => doc.category === 'system');
  const uncategorized = documents.filter(doc => doc.category === 'uncategorized');
  return <div className="wiki-archive">
@@ -132,25 +137,22 @@ export function WikiArchive({ blocks = [], entryId, month }: { blocks?: WikiBloc
     <Link className="text-link" href={'/wiki/review/' + reviews[0].period}>회고 바로 읽기</Link>
    </> : data ? <p>아직 월간 통합 회고가 없어요.</p> : feedback}
   </section>
-  {moments.length > 0 && <section><h2>최근의 특별한 순간</h2>{entryList(moments)}</section>}
+  {moments.length > 0 && <section><h2>전체 최근 여행·공연</h2>{entryList(moments)}</section>}
   <section aria-labelledby="wiki-archive-categories">
    <h2 id="wiki-archive-categories">주제별 탐색</h2>
    <div className="wiki-archive-categories" role="group" aria-label="Wiki 카테고리">
-    {categories.map(item => <button className="button" type="button" key={item.key} aria-pressed={selected === item.key} onClick={() => setSelected(item.key)}>
+    {categories.map(item => <button className="button" type="button" key={item.key} aria-pressed={selected === item.key} onClick={() => selectCategory(item.key)}>
      <Icon name={item.icon} size="small"/>{item.label}{data && ' (' + (entries.filter(entry => entry.category === item.entry).length + documents.filter(doc => doc.category === item.key || (item.key === 'collection' && doc.category === 'project')).length) + ')'}
     </button>)}
    </div>
-  </section>
-  <section aria-labelledby="wiki-recent-records"><h2 id="wiki-recent-records">최근 기록</h2>
+   <h3 id="wiki-selected-category" aria-live="polite">{category.label} · {categoryEntries.length + categoryDocs.length}건</h3>
    {feedback}
       {data && <>
     <label htmlFor="wiki-record-search">기억 찾기</label>
     <input className="wiki-record-search" id="wiki-record-search" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="제목, 날짜, 장소, 태그 검색"/>
-    {recent.length ? entryList(recent) : <p>{search ? '검색 조건에 맞는 기록이 없어요.' : '아직 기록이 없어요.'}</p>}
+    {search && <button className="button" type="button" onClick={() => setQuery('')}>검색 초기화</button>}
    </>}
-  </section>
-  <section aria-labelledby="wiki-selected-category">
-   <h2 id="wiki-selected-category">{category.label}</h2>
+   {selected === 'collection' && <p>프로젝트 기록과 Wiki 문서를 탐색하거나 <Link href="/explore/interests">Notion 관심사 목록</Link>을 열 수 있어요.</p>}
    {categoryEntries.length > 0 && entryList(categoryEntries)}
    {categoryDocs.length > 0 && documentList(categoryDocs)}
    {data && !categoryEntries.length && !categoryDocs.length && <p>이 카테고리에 표시할 기록이 없어요.</p>}
