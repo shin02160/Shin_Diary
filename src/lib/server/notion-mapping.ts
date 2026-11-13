@@ -12,7 +12,7 @@ export const schemas = {
 } as const;
 export interface Property { id?: string; url?: string | null; files?: { file?: { url?: string }; external?: { url?: string } }[]; type?: string; title?: RichText[]; rich_text?: RichText[]; select?: { name: string } | null; status?: { name: string } | null; checkbox?: boolean; date?: { start: string; end?: string | null; time_zone?: string | null } | null; multi_select?: { name: string }[]; relation?: { id: string }[]; has_more?: boolean }
 interface RichText { plain_text?: string; text?: { content: string } }
-export interface NotionPage { id: string; created_time?: string; object?: string; archived?: boolean; in_trash?: boolean; properties: Record<string,Property> }
+export interface NotionPage { id: string; created_time?: string; last_edited_time?: string; object?: string; archived?: boolean; in_trash?: boolean; properties: Record<string,Property> }
 const rich = (value = '') => ({ rich_text: (value.match(/[\s\S]{1,900}/gu) ?? []).map(content => ({ type: 'text', text: { content } })) });
 const title = (value: string) => ({title:[{type:'text',text:{content:value.slice(0,150)}}]});
 export const readText = (property?: Property) => (property?.rich_text || property?.title || []).map(t => t.plain_text ?? t.text?.content ?? '').join('');

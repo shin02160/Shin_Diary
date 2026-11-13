@@ -17,7 +17,7 @@ test('catalog keeps real sources distinct and filters by displayed metadata', ()
    updatedAt: '2026-11-13T03:00:00Z', detail: '아티스트', url: 'https://www.notion.so/concert' }] },
  };
  const catalog = buildCatalog({ activities: [], entries: [record, { ...record, id: 'sample', isSample: true }] }, collections);
- assert.deepEqual(catalog.map(item => item.key), ['trips:shared', 'performances:shared', 'entry:shared']);
+ assert.deepEqual(catalog.map(item => item.key), ['trips:shared', 'entry:shared', 'performances:shared']);
  assert.ok(catalog.every(item => item.cover === undefined));
  assert.deepEqual(filterCatalog(catalog, 'travel', '상하이', '2027', '').map(item => item.title), ['여행']);
  assert.deepEqual(filterCatalog(catalog, 'all', '아티스트', '2026', '').map(item => item.title), ['공연']);

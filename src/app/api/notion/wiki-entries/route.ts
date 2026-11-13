@@ -29,7 +29,7 @@ export async function GET(request: Request) {
    } catch { /* The entry can be viewed without an optional calendar link. */ }
    const photo = readText(p['Diary Photo']);
    const key = readText(p['App ID']).trim() || page.id;
-   return [{ id: key, title: readText(p.Name), content: readText(p.Content), occurredAt,
+   return [{ id: key, title: readText(p.Name), content: readText(p.Content), occurredAt, updatedAt: page.last_edited_time,
     createdAt: p['Created At']?.date?.start ?? page.created_time ?? '', category, tags: p.Tags?.multi_select?.map(tag => tag.name) ?? [],
     place: readText(p.Place) || undefined, photo: validPhoto(photo) ? photo : undefined, calendarEvent,
     notion: { pageId: page.id, hash: '' },

@@ -1,3 +1,4 @@
+import { compareExperience, experienceKey } from './experience-order.ts';
 import { archiveCalendarEndDay, archiveCalendarHref, type ArchiveCalendarEvent } from './calendar/archive.ts';
 import { calendarType } from './calendar/classification.ts';
 import { deriveScheduleState, scheduleActivityStatus, type ScheduleState } from './calendar/schedule-state.ts';
@@ -55,7 +56,7 @@ export function buildCatalog(archive?: { activities: Activity[]; entries: Entry[
   result.push({
    sourceType: 'entry', sourcePageId: entry.notion?.pageId || entry.id, category: kinds[entry.category], interestIds: [],
    detailHref: entry.notion?.pageId ? '/wiki?entry=' + encodeURIComponent(entry.id) : undefined,
-   startAt: entry.occurredAt, status: 'unknown', originalUrl: notionActivityUrl(entry.notion?.pageId),
+   startAt: entry.occurredAt, updatedAt: entry.updatedAt, status: 'unknown', originalUrl: notionActivityUrl(entry.notion?.pageId),
    key: 'entry:' + entry.id, kind: kinds[entry.category], type: '기록',
    title: entry.title || entry.content.trim().slice(0, 64) || (entry.photo ? '사진 기록' : '링크 기록'),
    start: dateKey(entry.occurredAt), updated: entry.createdAt, location: entry.place, detail: entry.mood,
@@ -72,12 +73,12 @@ export function buildCatalog(archive?: { activities: Activity[]; entries: Entry[
    activity, tags: activity.tags,
   });
  }
- return deduplicateActivities(result).sort((a, b) => (b.updated || b.start || '').localeCompare(a.updated || a.start || '') || a.title.localeCompare(b.title, 'ko'));
+ return deduplicateActivities(result).sort(compareExperience);
 }
 
 export function filterCatalog(items: CatalogItem[], kind: CatalogKind | 'all', query: string, year: string, tag: string) {
  const search = query.trim().toLocaleLowerCase('ko-KR');
- return items.filter(item => (!year || (item.start || item.updated)?.startsWith(year)) &&
+ return items.filter(item => (!year || experienceKey(item.startAt).startsWith(year + '-')) &&
   (kind === 'all' || item.kind === kind) && (!tag || item.tags.includes(tag)) &&
   [item.title, item.location, item.detail, ...item.tags].join(' ').toLocaleLowerCase('ko-KR').includes(search));
 }

@@ -33,6 +33,7 @@ export interface Entry {
   title?: string;
   occurredAt: ExperienceDate;
   createdAt: string;
+  updatedAt?: string;
   activityId?: Activity['id'];
   calendarEvent?: CalendarEntryLink;
   sourceLinks?: string[];

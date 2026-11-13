@@ -8,6 +8,7 @@ import { Icon } from './icon';
 import { CatalogCard, catalogIcons } from './notion-collections';
 import { RecordReminder } from './record-reminder';
 import { useDashboardPreferences } from '@/lib/dashboard-preferences';
+import { compareExperience, experienceKey } from '@/lib/experience-order';
 import { useArchive } from '@/lib/local-store';
 import { api } from '@/lib/notion-sync';
 import { buildCatalog, calendarCatalogItem, mergeCatalogEntries, catalogLabels, filterCatalog, type CatalogItem, type CatalogKind } from '@/lib/universe-catalog';
@@ -67,7 +68,7 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
   activities: archiveData?.activities ?? [],
   entries: mergeCatalogEntries(remoteEntries, archiveData?.entries ?? []),
  }, collectionData);
- const items = schedules && 'data' in schedules ? [...archiveItems, ...schedules.data] : archiveItems;
+ const items = schedules && 'data' in schedules ? [...archiveItems, ...schedules.data].sort(compareExperience) : archiveItems;
  const loading = (remote ? !archive : !local.ready) || !collections || !notionEntries || (mode === 'explore' && !schedules);
  const failedCollections = Object.entries(collectionData ?? {}).filter(([, value]) => value.state === 'failed');
  const sourceNames = { trips: '여행', performances: '공연' } as const;
@@ -79,11 +80,13 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
   ...failedCollections.map(([key, value]) => value.state === 'failed' ? sourceNames[key as keyof typeof sourceNames] + ' · ' + value.message : ''),
  ].filter(Boolean);
  const years = [...new Set(items.flatMap(item => {
-  const value = item.start || item.updated;
+  const value = experienceKey(item.startAt);
   return value ? [value.slice(0, 4)] : [];
  }))].sort().reverse();
  const tags = [...new Set(items.flatMap(item => item.tags))].sort((a, b) => a.localeCompare(b, 'ko'));
  const shown = filterCatalog(items, kind, query, year, tag);
+ const dated = shown.filter(item => experienceKey(item.startAt));
+ const undated = shown.filter(item => !experienceKey(item.startAt));
  const itemsByKey = new Map(items.map(item => [item.key, item]));
  const favorites = preferences.favorites.flatMap(key => {
   const item = itemsByKey.get(key);
@@ -125,7 +128,7 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
    </section>
    <section aria-labelledby="universe-recent">
     <div className="universe-heading"><h2 id="universe-recent"><Icon name="archive" size="small"/> 최근 기록</h2><Link href="/explore">모두 보기 <Icon name="next" size="small"/></Link></div>
-    {items.length > 0 && <div className="universe-cards universe-recent">{items.slice(0, 6).map(item => <CatalogCard key={item.key} item={item} compact/>)}</div>}
+    {items.length > 0 && <div className="universe-cards universe-recent">{items.filter(item => experienceKey(item.startAt)).slice(0, 6).map(item => <CatalogCard key={item.key} item={item} compact/>)}</div>}
     {!loading && items.length === 0 && !errors.length && <p className="universe-muted">아직 표시할 기록이 없어요.</p>}
    </section>
    {favorites.length > 0 && <section aria-labelledby="universe-favorites">
@@ -174,8 +177,14 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
    {shown.length > 0 && <>
     <p className="universe-muted" aria-live="polite">{shown.length}개</p>
     <div className={'universe-cards' + (list ? ' universe-list' : '')}>
-     {shown.slice(0, limit).map(item => <CatalogCard key={item.key} item={item} compact={list}/>)}
+     {dated.slice(0, limit).map(item => <CatalogCard key={item.key} item={item} compact={list}/>)}
     </div>
+    {undated.length > 0 && dated.length < limit && <section aria-labelledby="undated-records">
+     <h2 id="undated-records">날짜 미기록</h2>
+     <div className={'universe-cards' + (list ? ' universe-list' : '')}>
+      {undated.slice(0, limit - dated.length).map(item => <CatalogCard key={item.key} item={item} compact={list}/>)}
+     </div>
+    </section>}
     {shown.length > limit && <button className="button" type="button" onClick={() => setLimit(value => value + PAGE)}>기록 더 보기</button>}
    </>}
    {!loading && !shown.length && <>

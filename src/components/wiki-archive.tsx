@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/notion-sync';
+import { compareExperience } from '@/lib/experience-order';
 import { dateKey, dayLabel } from '@/lib/dates';
 import { notionActivityUrl } from '@/lib/activity-view';
 import { wikiDirectory } from '@/lib/wiki-directory';
@@ -49,7 +50,10 @@ export function WikiArchive({ blocks = [], entryId, month }: { blocks?: WikiBloc
   return () => { active = false; };
  }, [attempt]);
  const entries = (data?.entries ?? []).filter(entry => !entry.isSample).sort((a, b) =>
-  dateKey(b.occurredAt).localeCompare(dateKey(a.occurredAt)) || b.createdAt.localeCompare(a.createdAt));
+  compareExperience(
+   { startAt: a.occurredAt, updatedAt: a.updatedAt, sourceType: 'entry', sourcePageId: a.notion?.pageId ?? a.id },
+   { startAt: b.occurredAt, updatedAt: b.updatedAt, sourceType: 'entry', sourcePageId: b.notion?.pageId ?? b.id },
+  ));
  const documents = wikiDirectory(blocks).all;
  const documentList = (items: typeof documents) => <ul className="universe-wiki-recent">
   {items.map(doc => <li key={doc.id}><Link href={'/wiki?page=' + doc.id}><Icon name="file" size="small"/><span>{doc.title}</span><Icon name="next" size="small"/></Link></li>)}
