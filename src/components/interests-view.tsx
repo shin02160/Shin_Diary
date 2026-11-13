@@ -18,6 +18,9 @@ import type { CatalogItem } from '@/lib/universe-catalog';
 import { approvedKey, dismissedKey, storedLinks as stored } from '@/lib/interest-link-store';
 import { CollectionCover } from './notion-collections';
 import { Icon } from './icon';
+import { CatalogCard } from './notion-collections';
+import { TasteLanes } from './taste-lanes';
+import { tasteEvidence } from '@/lib/interest-history';
 
 const path = '/explore/interests';
 type LinkRow = ReturnType<typeof interestLinks>[number];
@@ -78,6 +81,9 @@ export function InterestsView({ items, loadingActivities, activitiesFailed, inte
   .map(item => ({ item, links: linkGroups(item, items, stored(approvedKey(item.id)), stored(dismissedKey(item.id))) }));
  if (order === 'links') cards.sort((a, b) => b.links.confirmed.length - a.links.confirmed.length ||
   b.links.suggested.length - a.links.suggested.length || a.item.name.localeCompare(b.item.name, 'ko'));
+ // Every card shares one year range so the strips line up and can be compared at a glance.
+ const firstYear = Math.min(...cards.flatMap(({ links }) => [...links.confirmed, ...links.suggested])
+  .flatMap(row => { const day = timelineDay(row.item.startAt); return day && day <= today() ? [Number(day.slice(0, 4))] : []; }));
  const { dated, undated } = timelineRows(interest ? relatedItems(interest, items) : []);
  const [now] = useState(Date.now);
  const directSchedules = (schedule?.events ?? []).filter(event =>
@@ -122,6 +128,7 @@ export function InterestsView({ items, loadingActivities, activitiesFailed, inte
       {(item.preferenceLevel || item.status) && <p className="universe-meta">{[item.preferenceLevel && '선호 ' + item.preferenceLevel, item.status].filter(Boolean).join(' · ')}</p>}
       <p className="universe-meta">{loadingActivities ? '연결 기록 확인 중…' :
        '확정 연결 ' + links.confirmed.length + '건 · 추천 후보 ' + links.suggested.length + '건'}</p>
+      {!loadingActivities && <YearStrip rows={[...links.confirmed, ...links.suggested]} from={firstYear}/>}
      </div>
     </article>)}
    </div>}
@@ -210,7 +217,23 @@ function InterestConnections({ interest, items, loading, recordsFailed, schedule
   })}</ul>;
  }
 
- return <section aria-labelledby="interest-records">
+ const currentDay = today();
+ const flow = tasteEvidence(interest, items, currentDay, approved, dismissed);
+ // Reviewed concerts and trips make the best way in; confirmed links come first, then the most recent.
+ const featured = records.filter(row => row.item.entry && !reviewMonth(row.item.entry) && (row.item.kind === 'concert' || row.item.kind === 'travel') &&
+  (timelineDay(row.item.startAt) ?? '9') <= currentDay)
+  .sort((a, b) => Number(b.confirmed) - Number(a.confirmed)).slice(0, 3);
+ return <>
+  {flow.length > 0 && <section aria-labelledby="interest-flow">
+   <h2 id="interest-flow">기록의 흐름</h2>
+   <TasteLanes lanes={[{ interest, rows: flow }]} today={currentDay} interestHref={id => path + '?id=' + id}/>
+  </section>}
+  {featured.length > 0 && <section aria-labelledby="interest-featured">
+   <h2 id="interest-featured">대표 기억</h2>
+   <p className="universe-meta">후기가 남아 있는 공연과 여행이에요.{featured.some(row => !row.confirmed) && ' 아직 확정하지 않은 추천 연결이 포함돼 있어요.'}</p>
+   <div className="universe-cards">{featured.map(row => <CatalogCard key={row.item.key} item={row.item}/>)}</div>
+  </section>}
+  <section aria-labelledby="interest-records">
   <h2 id="interest-records">관련 기록</h2>
   {loading ? <p role="status">관련 기록을 찾는 중…</p> :
    <p><strong>확정 연결 {links.confirmed.length}건 · 추천 후보 {links.suggested.length}건</strong>{links.schedules.length > 0 && ' · 일정 ' + links.schedules.length + '건'}</p>}
@@ -219,7 +242,7 @@ function InterestConnections({ interest, items, loading, recordsFailed, schedule
   {(missing > 0 || interest.moreRelations) && <p role="status">Notion에 연결된 기록 중 {missing > 0 ? missing + '건은' : '일부는'} 앱에서 조회할 수 없어 표시하지 못했어요.</p>}
   {error && <p role="alert">연결 선택을 저장하지 못했어요.</p>}
   {groups.length > 1 && <div className="chips" role="group" aria-label="기록 유형">
-   {(['', ...groups] as const).map(name => <button key={name} type="button" aria-pressed={group === name} onClick={() => setGroup(name)}>{name || '전체'}</button>)}
+   {(['', ...groups] as const).map(name => <button key={name} type="button" aria-pressed={group === name} onClick={() => setGroup(name)}>{name || '전체'} {name ? records.filter(row => connectionGroup(row.item) === name).length : records.length}</button>)}
   </div>}
   <h3>확정 연결</h3>
   {shown(links.confirmed).length > 0 ? rows(shown(links.confirmed)) :
@@ -235,5 +258,21 @@ function InterestConnections({ interest, items, loading, recordsFailed, schedule
    <summary>관련 없음으로 제외한 후보 {links.dismissed.length}건</summary>
    {rows(links.dismissed, true)}
   </details>}
- </section>;
+ </section>
+ </>;
+}
+
+// Which years have records for this interest. Presence only: the count is not a measure of taste.
+function YearStrip({ rows, from }: { rows: LinkRow[]; from: number }) {
+ const currentDay = today();
+ const days = rows.flatMap(row => { const day = timelineDay(row.item.startAt); return day && day <= currentDay ? [day] : []; }).sort();
+ if (!days.length) return <p className="universe-meta">날짜가 있는 연결 기록이 없어요.</p>;
+ const years = Array.from({ length: Number(currentDay.slice(0, 4)) - from + 1 }, (_, index) => String(from + index));
+ const seen = years.filter(year => days.some(day => day.startsWith(year)));
+ return <>
+  <ol className="interest-years" aria-label={seen.join('년, ') + '년에 기록이 있어요'}>
+   {years.map(year => <li key={year} className={seen.includes(year) ? 'on' : undefined} aria-hidden="true">{year.slice(2)}</li>)}
+  </ol>
+  <p className="universe-meta">최근 기록 {dayLabel(days.at(-1)!)}</p>
+ </>;
 }

@@ -319,3 +319,6 @@
 .taste-all{margin-block-start:18px}
 .taste-all>summary,.taste-clues~p{margin-block:8px}
 @media(max-width:760px){.taste-lane-names{width:78px}.taste-lane-names a{padding-inline:8px 4px;font-size:12px}}
+.interest-years{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 2px;padding:0;list-style:none}
+.interest-years li{min-width:28px;padding:1px 6px;border:1px solid var(--line);border-radius:999px;font-size:11px;line-height:1.6;text-align:center;color:var(--muted)}
+.interest-years li.on{border-color:var(--universe-accent);background:var(--universe-accent);color:#fff;font-weight:700}
