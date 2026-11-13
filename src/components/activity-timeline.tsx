@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { dayLabel } from '@/lib/dates';
-import { timelineDay, timelineRows, timelineYearCounts, timelineCalendarMatches } from '@/lib/activity-timeline';
+import { timelineDay, timelineRows, timelineYearCounts, timelineCalendarMatches, statusByElapsedDate } from '@/lib/activity-timeline';
 import { catalogLabels, type CatalogItem, type CatalogKind } from '@/lib/universe-catalog';
 import { deduplicateActivities, parseActivityDate, type ActivityStatus } from '@/lib/activity-view';
 import { archiveCalendarEndDay, archiveCalendarHref, type ArchiveCalendarEvent } from '@/lib/calendar/archive';
@@ -34,9 +34,11 @@ function calendarItem(event: ArchiveCalendarEvent): TimelineRecord {
  const status = confirmedLesson(event, today()) && archiveCalendarEndDay(event) <= today()
   ? 'done' : event.status === 'tentative' ? 'planned' : event.status;
  const inferred = calendarType(event);
+ const mappedCategory: CatalogKind = inferred === 'concert' ? 'concert' : inferred === 'travel' ? 'travel' :
+  inferred === 'exercise' || inferred === 'appointment' ? 'daily' : inferred === 'work' ? 'project' : 'uncategorized';
  return {
   key: event.id, sourceType: 'calendar', sourcePageId: event.pageId, title: event.title, type: '일정',
-  category: 'uncategorized', kind: 'uncategorized', interestIds: event.interestIds ?? [], status,
+  category: mappedCategory, kind: mappedCategory, interestIds: event.interestIds ?? [], status,
   inferredCategory: inferred,
   startAt: parseActivityDate(event.wallStart), endAt: parseActivityDate(archiveCalendarEndDay(event)),
   location: event.location, originalUrl: 'https://www.notion.so/' + event.pageId, tags: [],
@@ -134,7 +136,9 @@ export function ActivityTimeline({ items: catalog, loading: catalogLoading, fail
   });
   return () => { active = false; };
  }, []);
- const items = deduplicateActivities([...(sources?.items ?? []), ...catalog]);
+ const currentDay = today();
+ const items = deduplicateActivities([...(sources?.items ?? []), ...catalog])
+  .map(item => ({ ...item, status: statusByElapsedDate(item, currentDay) }));
  const loading = catalogLoading || !sources;
  const failed = catalogFailed || Boolean(sources?.errors.length);
  const [year, setYear] = useState('');
