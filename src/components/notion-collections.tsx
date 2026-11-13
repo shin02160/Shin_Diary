@@ -39,7 +39,7 @@ export function CatalogCard({ item, compact = false }: { item: CatalogItem; comp
  const excerpt = item.summary?.trim().slice(0, 100);
  return (
   <article className={`universe-card universe-tone-${item.kind}${compact ? ' universe-card-compact' : ''}`}>
-   {(item.cover || compact || item.detailHref) && <CollectionCover src={item.cover} kind={item.kind} compact={compact}/>}
+   {(item.cover || compact || item.detailHref) && <CollectionCover src={item.cover} kind={item.kind} compact={compact || !item.cover}/>}
    <div className="universe-card-body">
     <span className="universe-kind"><Icon name={catalogIcons[item.kind]} size="small"/> {item.type === '기록' || item.type === '활동' ? catalogLabels[item.kind] + ' · ' + item.type : item.type}</span>
     <div className="universe-card-heading">

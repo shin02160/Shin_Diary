@@ -84,7 +84,7 @@ export function InterestsView({ items, loadingActivities, activitiesFailed, inte
      return <li key={item.id} className="universe-tone-project">
       <h3><Link href={path + '?id=' + item.id}>{item.name}</Link></h3>
       <p className="universe-meta">{[item.category, item.status].filter(Boolean).join(' · ')}</p>
-      <p className="universe-meta">시작 {item.startedAt ? dayLabel(item.startedAt) : '미기록'} · 관련 활동 {item.relatedPageIds.length}{item.moreRelations ? '+' : ''}개</p>
+      <p className="universe-meta">시작 {item.startedAt ? dayLabel(item.startedAt) : '미기록'} · {item.relationsUnavailable ? '기록 관계 속성 미확인' : '관련 활동 ' + item.relatedPageIds.length + (item.moreRelations ? '+' : '') + '개'}</p>
       <p className="universe-meta">최근 활동 {latest ? dayLabel(latest) : loadingActivities ? '조회 중' : activitiesFailed ? '조회 실패' : '미기록'}</p>
      </li>;
     })}
@@ -93,7 +93,7 @@ export function InterestsView({ items, loadingActivities, activitiesFailed, inte
   </>}
   {interest && <>
    <div className="collection-record universe-tone-project">
-    <CollectionCover src={interest.cover} kind="project"/>
+    <CollectionCover src={interest.cover} kind="project" compact={!interest.cover}/>
     <p className="universe-meta">{[interest.category, interest.status, interest.preferenceLevel].filter(Boolean).join(' · ')}</p>
     <p>시작 {interest.startedAt ? dayLabel(interest.startedAt) : '미기록'}</p>
     {interest.endedAt && <p>종료 {dayLabel(interest.endedAt)}</p>}
@@ -101,6 +101,7 @@ export function InterestsView({ items, loadingActivities, activitiesFailed, inte
     {interest.tags.length > 0 && <p>{interest.tags.join(' · ')}</p>}
     {original && <a className="text-link" href={original} target="_blank" rel="noopener noreferrer">Notion 원본 열기</a>}
    </div>
+   <Link className="text-link" href={'/explore/timeline?interest=' + encodeURIComponent(interest.id)}>취향 연대기에서 보기</Link>
    {interest.memo && <section><h2>메모</h2><p className="preserve-lines">{interest.memo}</p></section>}
    <section><h2>좋아하는 이유</h2><p className="preserve-lines">{interest.why || '미기록'}</p></section>
    <section className="resume-panel" aria-labelledby="interest-months">
@@ -139,7 +140,8 @@ export function InterestsView({ items, loadingActivities, activitiesFailed, inte
        <p className="universe-meta">{day ? dayLabel(day) : '날짜 미상'}</p>
       </li>)}
      </ul>}
-     {!interest.relatedPageIds.length && <p>Notion 관계로 연결된 활동이 없어요.</p>}
+     {interest.relationsUnavailable ? <p role="status">관심사 DB에서 기록 관계 속성(관련 기록·관련 활동)을 찾지 못해 Notion 연결을 확인할 수 없어요. 연결된 기록이 없다는 뜻은 아니에요.</p> :
+      !interest.relatedPageIds.length && <p>Notion 관계로 연결된 활동이 없어요.</p>}
      {interest.relatedPageIds.length > dated.length + undated.length && <p>일부 연결 활동은 앱에서 조회할 수 있어야 표시됩니다.</p>}
     </>}
     {interest.moreRelations && <p>일부 연결 활동만 불러왔어요.</p>}

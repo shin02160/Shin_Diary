@@ -1,6 +1,6 @@
 import { compareExperience, experienceKey } from './experience-order.ts';
 import { archiveCalendarEndDay, archiveCalendarHref, type ArchiveCalendarEvent } from './calendar/archive.ts';
-import { calendarType } from './calendar/classification.ts';
+import { calendarType, confirmedLesson } from './calendar/classification.ts';
 import { deriveScheduleState, scheduleActivityStatus, type ScheduleState } from './calendar/schedule-state.ts';
 import { activityStatus, deduplicateActivities, notionActivityUrl, parseActivityDate, type ActivityView } from './activity-view.ts';
 import { dateKey } from './dates.ts';
@@ -12,6 +12,7 @@ export const catalogLabels: Record<CatalogKind, string> = { travel: '여행', co
 export interface CatalogItem extends ActivityView {
  key: string;
  scheduleState?: ScheduleState;
+ experienceVerified?: boolean;
  kind: CatalogKind;
  title: string;
  type: '여행' | '공연' | '기록' | '활동' | '일정' | '타임라인 이벤트';
@@ -76,6 +77,18 @@ export function buildCatalog(archive?: { activities: Activity[]; entries: Entry[
  return deduplicateActivities(result).sort(compareExperience);
 }
 
+export interface UndatedEntry { pageId: string; title: string; category: Entry['category']; updatedAt?: string; tags: string[] }
+
+// Entries without an experience date stay visible as undated; the edit time never stands in for it.
+export function undatedCatalogItem(record: UndatedEntry): CatalogItem {
+ const url = notionActivityUrl(record.pageId);
+ return {
+  sourceType: 'entry', sourcePageId: record.pageId, category: kinds[record.category], interestIds: [], status: 'unknown',
+  originalUrl: url, url, updatedAt: record.updatedAt, key: 'entry:' + record.pageId, kind: kinds[record.category], type: '기록',
+  title: record.title || '제목 없는 기록', tags: record.tags,
+ };
+}
+
 export function filterCatalog(items: CatalogItem[], kind: CatalogKind | 'all', query: string, year: string, tag: string) {
  const search = query.trim().toLocaleLowerCase('ko-KR');
  return items.filter(item => (!year || experienceKey(item.startAt).startsWith(year + '-')) &&
@@ -83,16 +96,16 @@ export function filterCatalog(items: CatalogItem[], kind: CatalogKind | 'all', q
   [item.title, item.location, item.detail, ...item.tags].join(' ').toLocaleLowerCase('ko-KR').includes(search));
 }
 
-export function calendarCatalogItem(event: ArchiveCalendarEvent, now: number): CatalogItem {
+export function calendarCatalogItem(event: ArchiveCalendarEvent, now: number, today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(now)): CatalogItem {
  const state = event.scheduleState ?? deriveScheduleState(event, now);
  const type = calendarType(event);
  const kind = type === 'travel' || type === 'concert' ? type : type === 'work' ? 'project' :
   type === 'exercise' || type === 'appointment' ? 'daily' : 'uncategorized';
  return {
-  key: event.id, sourceType: 'calendar', sourcePageId: event.pageId, title: event.title, type: '일정',
+  key: event.id, occurrenceKey: event.importKey, sourceType: 'calendar', sourcePageId: event.pageId, title: event.title, type: '일정',
   kind, category: kind, interestIds: event.interestIds ?? [], tags: [], status: scheduleActivityStatus[state],
-  scheduleState: state, start: event.wallStart, end: archiveCalendarEndDay(event),
-  startAt: parseActivityDate(event.wallStart), endAt: parseActivityDate(archiveCalendarEndDay(event)),
+  scheduleState: state, experienceVerified: state === 'completed' && confirmedLesson(event, today), start: event.wallStart, end: archiveCalendarEndDay(event),
+  startAt: parseActivityDate(event.allDay ? event.wallStart.slice(0, 10) : event.wallStart), endAt: parseActivityDate(archiveCalendarEndDay(event)),
   originalUrl: notionActivityUrl(event.pageId), location: event.location, detailHref: archiveCalendarHref(event),
  };
 }

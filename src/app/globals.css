@@ -276,3 +276,8 @@
 .timeline-comparison :is(th,td){padding:8px 4px;text-align:start;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
 .timeline-comparison button{font:inherit;text-align:start;min-height:44px}
 .activity-timeline details select{max-width:100%}
+
+.taste-topic{margin-block:18px}
+.taste-moments{border-inline-start:2px solid var(--line);margin-inline-start:6px;padding-inline-start:12px}
+.taste-moments h4{margin:4px 0;overflow-wrap:anywhere}
+.taste-moments a{text-decoration:underline}

@@ -8,21 +8,28 @@ import { isCalendarEntryLink } from '@/lib/calendar/entry-link';
 import { validPhoto } from '@/lib/entry-extras';
 import { sourceLinksProperty, validSourceLinks } from '@/lib/source-links';
 import type { Entry } from '@/lib/types';
+import type { UndatedEntry } from '@/lib/universe-catalog';
 
 export async function GET(request: Request) {
  try {
   const config = getConfig();
   authorize(request, config);
   const pages = await archivePages(service().client, config.entriesId);
+  const undated: UndatedEntry[] = [];
+  let uncategorized = 0;
   const entries = pages.flatMap((page): Entry[] => {
    const p = page.properties;
    const category = p.Category?.select?.name;
-   if (category !== 'Daily' && category !== 'Travel' && category !== 'Concert' && category !== 'Projects') return [];
+   if (category !== 'Daily' && category !== 'Travel' && category !== 'Concert' && category !== 'Projects') { uncategorized++; return []; }
    const start = p['Occurred At']?.date?.start;
    const kind = p['Date Kind']?.select?.name;
    const value = kind === 'date' ? start?.slice(0, 10) : kind === 'floating' ? start?.slice(0, 19) : start;
    const occurredAt = parseActivityDate(value, readText(p['Time Zone']) || undefined);
-   if (!occurredAt) return [];
+   if (!occurredAt) {
+    undated.push({ pageId: page.id, title: readText(p.Name).trim() || readText(p.Content).trim().slice(0, 64), category,
+     updatedAt: page.last_edited_time, tags: p.Tags?.multi_select?.map(tag => tag.name) ?? [] });
+    return [];
+   }
    let calendarEvent: Entry['calendarEvent'];
    try {
     const parsed: unknown = JSON.parse(readText(p['Calendar Event']));
@@ -38,6 +45,6 @@ export async function GET(request: Request) {
     notion: { pageId: page.id, hash: '' },
    }];
   });
-  return json({ entries });
+  return json({ entries, undated, uncategorized });
  } catch (error) { return errorResponse(error); }
 }

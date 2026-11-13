@@ -107,6 +107,10 @@ export function WikiArchive({ blocks = [], entryId, month }: { blocks?: WikiBloc
  if (entryId !== undefined) {
   const entry = entries.find(item => item.id === entryId);
   const original = notionActivityUrl(entry?.notion?.pageId);
+  const sameCategory = entries.filter(item => item.category === entry?.category);
+  const position = sameCategory.findIndex(item => item.id === entryId);
+  const newer = position > 0 ? sameCategory[position - 1] : undefined;
+  const older = position >= 0 ? sameCategory[position + 1] : undefined;
   return <div className="wiki-archive">
    <Link className="text-link" href="/wiki">Wiki로 돌아가기</Link>
    <h1>{entry ? entryTitle(entry) : 'Wiki 기록'}</h1>
@@ -122,6 +126,10 @@ export function WikiArchive({ blocks = [], entryId, month }: { blocks?: WikiBloc
      records={entries.flatMap(item => item.notion?.pageId ? [{ pageId: item.notion.pageId, href: entryHref(item.id), title: entryTitle(item) }] : [])}/> : <p className="preserve-lines">{entry.content}</p>}
     {original && <a className="text-link" href={original} target="_blank" rel="noopener noreferrer">Notion 원본 열기</a>}
    </article>}
+   {(newer || older) && <nav className="resume-panel" aria-label="같은 주제의 다른 기록">
+    {older && <p><Link href={entryHref(older.id)}>이전 기록 · {entryTitle(older)}</Link></p>}
+    {newer && <p><Link href={entryHref(newer.id)}>다음 기록 · {entryTitle(newer)}</Link></p>}
+   </nav>}
   </div>;
  }
  const monthly = reviews[0]?.entry;

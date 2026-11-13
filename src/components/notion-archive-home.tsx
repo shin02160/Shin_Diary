@@ -9,9 +9,10 @@ import { CatalogCard, catalogIcons } from './notion-collections';
 import { RecordReminder } from './record-reminder';
 import { useDashboardPreferences } from '@/lib/dashboard-preferences';
 import { compareExperience, experienceKey } from '@/lib/experience-order';
-import { useArchive } from '@/lib/local-store';
+import { today, useArchive } from '@/lib/local-store';
 import { api } from '@/lib/notion-sync';
-import { buildCatalog, calendarCatalogItem, mergeCatalogEntries, catalogLabels, filterCatalog, type CatalogItem, type CatalogKind } from '@/lib/universe-catalog';
+import { buildCatalog, undatedCatalogItem, type UndatedEntry, calendarCatalogItem, mergeCatalogEntries, catalogLabels, filterCatalog, type CatalogItem, type CatalogKind } from '@/lib/universe-catalog';
+import { deduplicateActivities } from '@/lib/activity-view';
 import type { ArchiveCalendarEvent } from '@/lib/calendar/archive';
 import type { Activity, Entry } from '@/lib/types';
 import type { NotionCollections } from '@/lib/notion-collections';
@@ -20,6 +21,7 @@ const kinds = (['travel', 'concert', 'daily', 'project'] as const) satisfies rea
 const PAGE = 18;
 type Archive = { activities: Activity[]; entries: Entry[] };
 type Result<T> = { data: T } | { error: string };
+type WikiEntries = { entries: Entry[]; undated?: UndatedEntry[]; uncategorized?: number };
 
 export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSearch = false, remote = true, interestId, timelineStats = false }: {
  mode?: 'home' | 'explore' | 'wiki' | 'timeline' | 'interests';
@@ -31,7 +33,7 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
 }) {
  const local = useArchive();
  const preferences = useDashboardPreferences();
- const [notionEntries, setNotionEntries] = useState<Result<{ entries: Entry[] }>>();
+ const [notionEntries, setNotionEntries] = useState<Result<WikiEntries>>();
  const [archive, setArchive] = useState<Result<Archive>>();
  const [schedules, setSchedules] = useState<Result<CatalogItem[]>>();
  const [collections, setCollections] = useState<Result<NotionCollections>>();
@@ -49,12 +51,12 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
    void api<T>(path).then(data => { if (alive) update({ data }); })
     .catch(error => { if (alive) update({ error: error instanceof Error ? error.message : '기록을 불러오지 못했습니다.' }); });
   };
-  load<{ entries: Entry[] }>('wiki-entries', setNotionEntries);
+  load<WikiEntries>('wiki-entries', setNotionEntries);
   if (mode === 'explore') load<{ events: ArchiveCalendarEvent[] }>('life-calendar', result => {
    if ('error' in result) setSchedules(result);
    else {
     const now = Date.now();
-    setSchedules({ data: result.data.events.map(event => calendarCatalogItem(event, now)) });
+    setSchedules({ data: deduplicateActivities(result.data.events.map(event => calendarCatalogItem(event, now))) });
    }
   });
   if (remote) load<Archive>('archive', setArchive);
@@ -65,10 +67,12 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
  const collectionData = collections && 'data' in collections ? collections.data : undefined;
  const archiveData = remote ? archive && 'data' in archive ? archive.data : undefined : local.ready ? local : undefined;
  const remoteEntries = notionEntries && 'data' in notionEntries ? notionEntries.data.entries : [];
- const archiveItems = buildCatalog({
+ const wikiData = notionEntries && 'data' in notionEntries ? notionEntries.data : undefined;
+ const archiveItems = deduplicateActivities([...buildCatalog({
   activities: archiveData?.activities ?? [],
   entries: mergeCatalogEntries(remoteEntries, archiveData?.entries ?? []),
- }, collectionData);
+ }, collectionData), ...(wikiData?.undated ?? []).map(undatedCatalogItem)]).sort(compareExperience);
+ const currentDay = today();
  const items = schedules && 'data' in schedules ? [...archiveItems, ...schedules.data].sort(compareExperience) : archiveItems;
  const loading = (remote ? !archive : !local.ready) || !collections || !notionEntries || (mode === 'explore' && !schedules);
  const failedCollections = Object.entries(collectionData ?? {}).filter(([, value]) => value.state === 'failed');
@@ -129,7 +133,7 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
    </section>
    <section aria-labelledby="universe-recent">
     <div className="universe-heading"><h2 id="universe-recent"><Icon name="archive" size="small"/> 최근 기록</h2><Link href="/explore">모두 보기 <Icon name="next" size="small"/></Link></div>
-    {items.length > 0 && <div className="universe-cards universe-recent">{items.filter(item => experienceKey(item.startAt)).slice(0, 6).map(item => <CatalogCard key={item.key} item={item} compact/>)}</div>}
+    {items.length > 0 && <div className="universe-cards universe-recent">{items.filter(item => { const day = experienceKey(item.startAt).slice(0, 10); return day && day <= currentDay; }).slice(0, 6).map(item => <CatalogCard key={item.key} item={item} compact/>)}</div>}
     {!loading && items.length === 0 && !errors.length && <p className="universe-muted">아직 표시할 기록이 없어요.</p>}
    </section>
    {favorites.length > 0 && <section aria-labelledby="universe-favorites">
@@ -200,6 +204,7 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
     }}>조건 초기화</button>}
    </>}
   </>}
+  {mode === 'explore' && Boolean(wikiData?.uncategorized) && <p className="universe-muted">분류(Category)가 지정되지 않은 Notion 기록 {wikiData?.uncategorized}개는 표시하지 않았어요.</p>}
   {mode !== 'home' && hasTruncatedSource && <p className="universe-muted">일부 데이터 소스는 최근 항목 500개까지 표시합니다.</p>}
   {loading && <p role="status" className="universe-muted">기록을 불러오는 중…</p>}
   {errors.length > 0 && <div className="universe-load-error">

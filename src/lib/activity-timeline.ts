@@ -31,6 +31,15 @@ export function timelineCalendarMatches(items: CatalogItem[]) {
  return matches;
 }
 
+// A written record is evidence that the experience happened; an elapsed schedule alone is not.
+export function experienceConfirmed(item: CatalogItem, today: string, reviewedCalendars: ReadonlySet<string> = new Set()) {
+ const day = timelineDay(item.startAt);
+ if (!day || (timelineDay(item.endAt) ?? day) > today || item.status === 'cancelled') return false;
+ if (item.sourceType === 'entry') return true;
+ if (item.sourceType === 'calendar') return item.status === 'done' && Boolean(item.experienceVerified || reviewedCalendars.has(item.key));
+ return item.status === 'done';
+}
+
 export function timelineYearCounts(items: CatalogItem[], today: string, matches = timelineCalendarMatches(items)) {
  const years = new Map<string, Map<ActivityView['category'], { records: number; completed: number; linkedCopies: number }>>();
  for (const item of items) {

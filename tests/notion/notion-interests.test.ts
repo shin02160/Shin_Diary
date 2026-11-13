@@ -20,3 +20,17 @@ test('interest detail only reads related records from the configured interest so
  assert.equal(result.interests[0].moreRelations, false);
  assert.match(calls.at(-1) ?? '', /rel%3Aid/);
 });
+
+test('interest list reads the date range and reports a missing relation property instead of zero links', async () => {
+ const source = '1'.repeat(32);
+ const page = (id: string, properties: object) => ({ id: id.repeat(32), object: 'page', properties });
+ const api = { async call<T>(): Promise<T> {
+  return { has_more: false, results: [
+   page('2', { '주제': { title: [{ plain_text: '가' }] }, '기간': { date: { start: '2023-10-05', end: '2026-10-31' } } }),
+   page('3', { '주제': { title: [{ plain_text: '나' }] }, '관련 기록': { relation: [] } }),
+  ] } as T;
+ } };
+ const [first, second] = (await readInterests(api, source)).interests;
+ assert.deepEqual([first.startedAt, first.endedAt, first.relationsUnavailable], ['2023-10-05', '2026-10-31', true]);
+ assert.deepEqual([second.startedAt, second.relationsUnavailable], [undefined, false]);
+});

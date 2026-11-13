@@ -2,9 +2,10 @@ import Link from 'next/link';
 import { Icon, type IconName } from '@/components/icon';
 
 const links = [
- ['/wiki', 'wiki', '개인 WIKI'], ['/memories', 'memories', '추억 모아보기'],
- ['/collection', 'collection', '컬렉션'], ['/continue', 'resume', '이어서 하기'],
- ['/settings', 'settings', '설정 · Notion 연결 · 백업'],
+ ['/explore', 'explore', '전체 기록 탐색'], ['/calendar', 'calendar', '캘린더'],
+ ['/report', 'report', '활동 리포트'], ['/capture', 'edit', '기록하기'],
+ ['/memories', 'memories', '추억 모아보기'], ['/continue', 'resume', '이어서 하기'],
+ ['/collection', 'collection', '컬렉션'], ['/settings', 'settings', '설정 · Notion 연결 · 백업'],
 ] as const satisfies readonly (readonly [string, IconName, string])[];
 
 export default function MorePage() {

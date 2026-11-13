@@ -3,7 +3,7 @@ import {
  BriefcaseBusiness, Compass, LayoutGrid, List, Menu, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, CircleAlert, CircleCheck,
  CirclePause, CirclePlay, CloudDownload, CloudUpload, Coffee, Download, Eye, EyeOff, FileText,
  Filter, Heart, House, ImagePlus, Inbox, Link2, LockKeyhole, LogIn, LogOut, MapPin, Music2,
- Pencil, Plane, Plus, RotateCcw, Search, SlidersHorizontal, Star, Square, SquareCheck, Upload, UserRound,
+ ChartColumn, Sparkles, Pencil, Plane, Plus, RotateCcw, Search, SlidersHorizontal, Star, Square, SquareCheck, Upload, UserRound,
 } from 'lucide-react';
 import type { Category, LifecycleStatus } from '@/lib/types';
 
@@ -18,7 +18,7 @@ const icons = {
  download: Download, backup: ArrowDownToLine, upload: Upload, restore: RotateCcw,
  cloudRead: CloudDownload, cloudWrite: CloudUpload, login: LogIn, logout: LogOut,
  lock: LockKeyhole, show: Eye, hide: EyeOff, photo: ImagePlus, profile: UserRound,
- checked: SquareCheck, unchecked: Square,
+ checked: SquareCheck, unchecked: Square, taste: Sparkles, report: ChartColumn,
 };
 
 export type IconName = keyof typeof icons;

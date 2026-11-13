@@ -13,6 +13,7 @@ export interface Interest {
  tags: string[];
  relatedPageIds: string[];
  moreRelations: boolean;
+ relationsUnavailable?: boolean;
 }
 
 export interface InterestResult {

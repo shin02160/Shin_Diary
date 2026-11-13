@@ -33,8 +33,9 @@ function mapInterest(page: InterestPage): Interest | undefined {
  const name = readText(p['주제'] ?? p.Name).trim();
  if (!name) return;
  const relations = recordRelationNames(page).map(name => p[name]);
- const startedAt = (p['date:기간 시작:start'] ?? p.StartedAt)?.date?.start?.slice(0, 10);
- const endedAt = p['date:기간 종료:start']?.date?.start?.slice(0, 10);
+ // '기간' is a single Notion date range. The other names are kept for older schemas.
+ const startedAt = (p['기간'] ?? p['date:기간 시작:start'] ?? p.StartedAt)?.date?.start?.slice(0, 10);
+ const endedAt = (p['기간']?.date?.end ?? p['date:기간 종료:start']?.date?.start)?.slice(0, 10);
  const lastReviewedAt = p.LastReviewedAt?.date?.start?.slice(0, 10);
  const file = p.Cover?.files?.[0];
  return {
@@ -50,6 +51,7 @@ function mapInterest(page: InterestPage): Interest | undefined {
   tags: p.Tags?.multi_select?.map(tag => tag.name) ?? [],
   relatedPageIds: [...new Set(relations.flatMap(property => property.relation ?? []).map(row => row.id).filter(id => idPattern.test(id)).map(normalize))],
   moreRelations: relations.some(property => property.has_more === true),
+  relationsUnavailable: relations.length === 0,
  };
 }
 
@@ -81,6 +83,7 @@ export async function readInterests(api: Transport, sourceId?: string, interestI
    if (relation?.type === 'relation' && normalize(relation.relation?.data_source_id ?? '') === normalize(source)) {
     const pages = await archivePages(api, activitiesSource, { property: '관련 관심사', relation: { contains: interest.id } });
     interest.relatedPageIds = [...new Set([...interest.relatedPageIds, ...pages.map(page => normalize(page.id))])];
+    interest.relationsUnavailable = false;
    }
   }
   return { configured: true, interests: [interest] };

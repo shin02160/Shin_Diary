@@ -5,7 +5,7 @@ async page => {
  const performances = { state: 'ready', items: [{ id: 'concert', title: '테스트 공연', start: '2026-11-06', location: '서울', url: 'https://www.notion.so/concert' }], truncated: false };
  await page.route('**/api/notion/archive', route => route.fulfill({ json: { activities: [], entries: [] } }));
  await page.route('**/api/notion/collections', route => route.fulfill({ json: { trips, performances } }));
- const routes = ['/', '/explore', '/capture', '/calendar', '/more', '/wiki', '/settings'];
+ const routes = ['/', '/explore', '/explore/interests', '/explore/timeline', '/report', '/capture', '/calendar', '/more', '/wiki', '/settings'];
  for (const width of [320, 375, 390, 430, 768, 1024, 1440]) {
   await page.setViewportSize({ width, height: 900 });
   for (const path of routes) {
@@ -14,7 +14,7 @@ async page => {
    const mobile = width <= 760;
    const nav = page.getByRole('navigation', { name: mobile ? '하단 메뉴' : '주요 메뉴', exact: true });
    const links = nav.getByRole('link');
-   if (await links.count() !== (mobile ? 5 : 9)) throw Error('menu items: ' + width);
+   if (await links.count() !== (mobile ? 5 : 12)) throw Error('menu items: ' + width);
    if (mobile && await nav.locator('[aria-current]').count() !== 1) throw Error('active menu: ' + path);
    if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)) throw Error('horizontal overflow: ' + width + ' ' + path);
    if (mobile) {
@@ -55,5 +55,5 @@ async page => {
  await page.getByRole('button', { name: '조건 초기화' }).press('Enter');
  await page.getByText('테스트 여행', { exact: true }).waitFor();
  if (await search.inputValue()) throw Error('search reset');
- return '49 responsive route checks, category/year/search filters, keyboard view toggle and search focus passed';
+ return '70 responsive route checks, category/year/search filters, keyboard view toggle and search focus passed';
 }

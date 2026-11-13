@@ -8,6 +8,7 @@ export type ActivityCategory = 'travel' | 'concert' | 'daily' | 'project' | 'unc
 export interface ActivityView {
  sourceType: ActivitySource;
  sourcePageId: string;
+ occurrenceKey?: string;
  title: string;
  category: ActivityCategory;
  startAt?: ExperienceDate;
@@ -59,7 +60,7 @@ export function activityStatus(value?: string): ActivityStatus {
 export function deduplicateActivities<T extends ActivityView>(items: T[]): T[] {
  const records = new Map<string, T>();
  for (const item of items) {
-  const id = item.sourceType + ':' + normalizedPageId(item.sourcePageId);
+  const id = item.sourceType + ':' + (item.occurrenceKey || normalizedPageId(item.sourcePageId));
   const previous = records.get(id);
   const updated = Date.parse(item.updatedAt ?? '');
   const previousUpdated = Date.parse(previous?.updatedAt ?? '');
