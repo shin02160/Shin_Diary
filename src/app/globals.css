@@ -300,3 +300,22 @@
 .wiki-story-table th{background:var(--lavender)}
 .wiki-story-table :is(th,td){word-break:keep-all}
 .wiki-story-body a{text-decoration:underline}
+.taste-lanes{display:flex;margin-block:12px 6px;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden;--universe-accent:var(--muted)}
+.taste-lane-names{flex:0 0 auto;width:112px;border-inline-end:1px solid var(--line)}
+.taste-lane-names a{display:flex;align-items:center;padding:6px 8px 0 12px;font-weight:700;line-height:1.3;overflow-wrap:anywhere;text-decoration:underline}
+.taste-lane-scroll{flex:1 1 0;min-width:0;overflow-x:auto}
+.taste-lane-scroll svg{display:block}
+.taste-lane-grid{stroke:var(--line);stroke-width:1}
+.taste-lane-empty{stroke:var(--line);stroke-width:2;stroke-dasharray:3 6}
+.taste-lane-band{fill:var(--lavender)}
+.taste-lane-label{font-size:11px;fill:var(--muted)}
+.taste-lanes a:focus-visible circle:first-of-type{stroke:var(--purple);stroke-width:2}
+.taste-lane-legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 0 10px;padding:0;list-style:none;font-size:12px;color:var(--muted)}
+.taste-lane-legend li{display:inline-flex;align-items:center;gap:4px}
+.taste-highlight-year h4{margin:14px 0 4px}
+.taste-highlight-year ul{margin:0;padding:0;list-style:none}
+.taste-highlight-year li{padding:8px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+.taste-highlight-year li a{font-weight:700;text-decoration:underline}
+.taste-all{margin-block-start:18px}
+.taste-all>summary,.taste-clues~p{margin-block:8px}
+@media(max-width:760px){.taste-lane-names{width:78px}.taste-lane-names a{padding-inline:8px 4px;font-size:12px}}
