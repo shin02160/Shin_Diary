@@ -8,7 +8,7 @@ import { catalogLabels, type CatalogItem, type CatalogKind } from '@/lib/univers
 import { deduplicateActivities, parseActivityDate, type ActivityStatus } from '@/lib/activity-view';
 import { archiveCalendarEndDay, archiveCalendarHref, type ArchiveCalendarEvent } from '@/lib/calendar/archive';
 import { reviewMonth, gptReviewId } from '@/lib/wiki-review';
-import { calendarType, calendarTypeLabels, confirmedLesson } from '@/lib/calendar/classification';
+import { calendarType, calendarTypeLabels, confirmedLesson, type CalendarType } from '@/lib/calendar/classification';
 import { interestHistory } from '@/lib/interest-history';
 import type { InterestResult } from '@/lib/interests';
 import { today } from '@/lib/local-store';
@@ -28,14 +28,16 @@ function timelineCategory(value?: string): CatalogKind {
  return 'uncategorized';
 }
 
-function calendarItem(event: ArchiveCalendarEvent): CatalogItem {
+type TimelineRecord = CatalogItem & { inferredCategory?: CalendarType };
+
+function calendarItem(event: ArchiveCalendarEvent): TimelineRecord {
  const status = confirmedLesson(event, today()) && archiveCalendarEndDay(event) <= today()
   ? 'done' : event.status === 'tentative' ? 'planned' : event.status;
  const inferred = calendarType(event);
  return {
   key: event.id, sourceType: 'calendar', sourcePageId: event.pageId, title: event.title, type: '일정',
   category: 'uncategorized', kind: 'uncategorized', interestIds: event.interestIds ?? [], status,
-  detail: inferred === 'unknown' ? undefined : '추정 유형 · ' + calendarTypeLabels[inferred],
+  inferredCategory: inferred,
   startAt: parseActivityDate(event.wallStart), endAt: parseActivityDate(archiveCalendarEndDay(event)),
   location: event.location, originalUrl: 'https://www.notion.so/' + event.pageId, tags: [],
   detailHref: archiveCalendarHref(event),
@@ -54,21 +56,61 @@ function sourceItem(event: TimelineEvent): CatalogItem {
 
 const labels: Record<ActivityStatus, string> = { planned: '예정', confirmed: '확정', done: '완료', cancelled: '취소', unknown: '상태 미확인' };
 
-function TimelineItem({ item, day, end, calendar }: { item: CatalogItem; day?: string; end?: string; calendar?: CatalogItem }) {
+function TimelineItem({ item, day, end, calendar, editCategory }: {
+ item: TimelineRecord; day?: string; end?: string; calendar?: CatalogItem; editCategory?: boolean;
+}) {
  return <li className={'universe-tone-' + item.category}>
   <div><span className="universe-kind">{item.type === '일정' || item.type === '타임라인 이벤트' ? item.type : catalogLabels[item.category]}</span> <span className="universe-meta">{labels[item.status]}</span></div>
   <h3>{item.detailHref ? <Link href={item.detailHref}>{item.title}</Link> : item.title}</h3>
   {day && <p className="universe-meta"><time dateTime={day}>{dayLabel(day)}</time>
    {end && end !== day && <> ~ <time dateTime={end}>{dayLabel(end)}</time></>}</p>}
-  {item.detail && (item.sourceType === 'timeline' || item.sourceType === 'calendar') && <p className="universe-meta">{item.sourceType === 'timeline' && '원본 관련 관심사 · '}{item.detail}</p>}
+  {item.detail && item.sourceType === 'timeline' && <p className="universe-meta">{item.sourceType === 'timeline' && '원본 관련 관심사 · '}{item.detail}</p>}
   {item.location && <p className="universe-meta">{item.location}</p>}
+  {item.inferredCategory && (editCategory ? <CalendarCategory item={item} inferred={item.inferredCategory}/> :
+   <p className="universe-meta">{inferenceLabel(item.inferredCategory)}</p>)}
   {calendar?.detailHref && <p><Link href={calendar.detailHref}>연결된 캘린더 일정 보기</Link></p>}
   {item.originalUrl && <a className="text-link" href={item.originalUrl} target="_blank" rel="noopener noreferrer">Notion 원본 열기</a>}
  </li>;
 }
 
+function inferenceLabel(type: CalendarType) {
+ return type === 'unknown' ? '유형 미확인' : '추정 유형 · ' + calendarTypeLabels[type];
+}
+
+function CalendarCategory({ item, inferred }: { item: TimelineRecord; inferred: CalendarType }) {
+ const storageKey = 'mlu.timeline.calendar-type.' + item.sourcePageId;
+ const [choice, setChoice] = useState<CalendarType | ''>(() => {
+  try {
+   const stored = localStorage.getItem(storageKey);
+   if (stored && Object.hasOwn(calendarTypeLabels, stored)) return stored as CalendarType;
+  } catch { /* Keep automatic classification when storage is unavailable. */ }
+  return '';
+ });
+ const [error, setError] = useState(false);
+
+ function change(value: string) {
+  try {
+   if (value) localStorage.setItem(storageKey, value);
+   else localStorage.removeItem(storageKey);
+   setChoice(value as CalendarType | '');
+   setError(false);
+  } catch { setError(true); }
+ }
+
+ return <div>
+  <p className="universe-meta">{choice ? "선택한 유형 · " + calendarTypeLabels[choice] + " / " : ""}{inferenceLabel(inferred)}</p>
+  <label>이 브라우저에서 표시할 유형{' '}
+   <select aria-label={item.title + ' 일정 유형'} value={choice} onChange={event => change(event.target.value)}>
+    <option value="">자동 분류 사용</option>
+    {Object.entries(calendarTypeLabels).map(([type, label]) => <option key={type} value={type}>{label}</option>)}
+   </select>
+  </label>
+  {error && <p role="alert">이 브라우저에 유형을 저장하지 못했어요.</p>}
+ </div>;
+}
+
 export function ActivityTimeline({ items: catalog, loading: catalogLoading, failed: catalogFailed }: { items: CatalogItem[]; loading: boolean; failed: boolean }) {
- const [sources, setSources] = useState<{ items: CatalogItem[]; errors: string[]; interests?: InterestResult }>();
+ const [sources, setSources] = useState<{ items: TimelineRecord[]; errors: string[]; interests?: InterestResult }>();
  useEffect(() => {
   let active = true;
   void Promise.allSettled([
@@ -301,7 +343,7 @@ export function ActivityTimeline({ items: catalog, loading: catalogLoading, fail
      <div id={'timeline-month-' + key} hidden={!expanded}>
       {expanded && <>
        <ol className="timeline-list">{monthRows.slice(0, limit).map(({ item, day, end }) =>
-        <TimelineItem key={item.key} item={item} day={day} end={end} calendar={calendarMatches.get(item.key)}/>)}</ol>
+        <TimelineItem key={item.key} item={item} day={day} end={end} calendar={calendarMatches.get(item.key)} editCategory/>)}</ol>
        {monthRows.length > limit && <button className="button" type="button" onClick={() => setLimit(value => value + 24)}>날짜 기록 더 보기</button>}
       </>}
      </div>
