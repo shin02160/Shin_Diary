@@ -12,6 +12,7 @@ import { catalogLabels, type CatalogItem } from '@/lib/universe-catalog';
 import { CollectionCover } from './notion-collections';
 import { TasteLanes } from './taste-lanes';
 import { TasteEras } from './taste-eras';
+import { TasteUniverse } from './taste-universe';
 import { tasteEras } from '@/lib/taste-eras';
 
 const PAGE = 6, HIGHLIGHTS = 4;
@@ -59,12 +60,18 @@ export function TasteJourney({ items, interests, loading, errors }: {
  const dated = items.filter(item => item.sourceType !== 'calendar' && item.startAt).length;
  const more = (key: string, size: number) => setLimits({ ...limits, [key]: (limits[key] ?? size) + PAGE });
 
- return <section className="resume-panel" aria-labelledby="taste-flow">
-  <h2 id="taste-flow">취향의 흐름</h2>
+ return <>
+ <TasteUniverse entries={items.flatMap(item => item.entry ? [item.entry] : [])} loading={loading}/>
+ <section className="resume-panel" aria-labelledby="taste-flow">
+  <h2 id="taste-flow">기록으로 본 활동 흐름</h2>
+  <p className="universe-meta">아래는 기록 횟수와 날짜로 정리한 보조 자료예요. 많이 기록했다고 더 좋아했다는 뜻은 아니에요.</p>
   {errors.map(message => <p role="alert" key={message}>{message} 조회된 자료만 표시해요.</p>)}
   {loading ? <p role="status">기록을 불러오는 중…</p> : !interests ? <p role="alert">관심사를 불러오지 못했어요.</p> : <>
    {interests.length === 0 && <p>등록된 관심사가 없어요.</p>}
-   <TasteEras eras={tasteEras(items, interests, currentDay)}/>
+   <details>
+    <summary>시기별로 가장 많이 기록된 대상</summary>
+    <TasteEras eras={tasteEras(items, interests, currentDay)}/>
+   </details>
    <h3 className="taste-year">관심사별로 보기</h3>
    <div className="universe-filter-row timeline-filters" role="group" aria-label="취향 연대기 필터">
     <label>관심사 <select value={topic} onChange={event => setSelected(event.target.value)}>
@@ -151,5 +158,6 @@ export function TasteJourney({ items, interests, loading, errors }: {
     })}
    </details>}
   </>}
- </section>;
+ </section>
+ </>;
 }

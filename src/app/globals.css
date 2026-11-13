@@ -344,3 +344,19 @@
 .taste-era-subjects span.new{border-color:var(--purple)}
 .taste-era-records ul{margin:0 0 6px;padding-inline-start:18px}
 .taste-era-records p{margin:8px 0 2px}
+.taste-universe h3{margin:20px 0 6px}
+.taste-quotes{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.taste-quotes li{padding:12px 14px;border:1px solid var(--line);border-inline-start:4px solid var(--line);border-radius:12px;background:var(--surface)}
+.taste-quotes li.confirmed{border-inline-start-color:var(--purple)}
+.taste-quotes blockquote{margin:0 0 4px;font-size:1rem;line-height:1.7;overflow-wrap:anywhere}
+.taste-quotes .universe-meta a,.taste-universe .taste-topic a{text-decoration:underline}
+.taste-quotes .form-actions{margin-top:8px;flex-wrap:wrap}
+.taste-quotes input{min-height:44px;max-width:160px;padding:4px 10px;border:1px solid var(--line);border-radius:10px;font:inherit}
+.taste-quotes button[aria-pressed=true]{background:var(--lavender);border-color:var(--purple)}
+.taste-traits{display:flex;flex-wrap:wrap;gap:4px 6px;margin:6px 0 0}
+.taste-traits span{display:inline-flex;align-items:center;gap:2px;padding:1px 4px 1px 10px;border-radius:999px;background:var(--lavender);font-size:13px;font-weight:700}
+.taste-traits button{min-width:28px;min-height:28px;border:0;background:none;font:inherit;color:var(--muted);cursor:pointer}
+.taste-universe .taste-topic h4{margin:0 0 2px}
+.taste-universe details{margin-top:14px}
+.taste-quotes li.taste-more{padding:0;border:0;background:none}
+.taste-quotes li.taste-more button{text-align:start;overflow-wrap:anywhere}
