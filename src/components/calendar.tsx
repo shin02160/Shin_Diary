@@ -10,7 +10,7 @@ import type { Entry } from '@/lib/types';
 import { dateKey, dateLabel } from '@/lib/dates';
 import { overlaps, eventPeriod, wallLabel } from '@/lib/calendar/event-utils';
 import { useIcsPreview } from '@/lib/calendar/preview-store';
-import { archiveCalendarEndDay, archiveCalendarOverlaps, type ArchiveCalendarEvent } from '@/lib/calendar/archive';
+import { archiveCalendarEndDay, archiveCalendarOverlaps, archiveCalendarDisplayStatus, type ArchiveCalendarEvent } from '@/lib/calendar/archive';
 import { api } from '@/lib/notion-sync';
 import type { ImportedEvent, SavedEvent } from '@/lib/calendar/types';
 import { IcsImport } from './ics-import';
@@ -22,10 +22,9 @@ export function Calendar({ date, eventId, remote }: { date?: string; eventId?: s
 function EventDetails({event}:{event:ImportedEvent}){return <><p>{eventPeriod(event)}</p><details className="event-details"><summary>일정 상세 보기</summary><dl><div><dt>출처</dt><dd>{event.sourceName} · 네이버 ICS 스냅샷</dd></div>{event.location&&<div><dt>장소</dt><dd>{event.location}</dd></div>}{event.description&&<div><dt>설명</dt><dd className="preserve-lines">{event.description}</dd></div>}<div><dt>파일을 읽은 시각</dt><dd>{new Date(event.importedAt).toLocaleString('ko-KR')}</dd></div><div><dt>상태</dt><dd>{{confirmed:'확정',tentative:'미확정',cancelled:'취소됨',unknown:'원본에 표시 없음'}[event.status]}</dd></div></dl><p className="muted">읽기 전용 일정입니다.</p><EventCaptureButton event={event}/></details></>;}
 function ArchivedEventDetails({ event, expanded, relationOnly = false }: { event: ArchiveCalendarEvent; expanded: boolean; relationOnly?: boolean }) {
  const end = event.allDay ? archiveCalendarEndDay(event) : event.wallEnd;
- const statuses = { confirmed: '확정', tentative: '예정', cancelled: '취소', unknown: '상태 미확인' };
  return <>
   {!relationOnly && <><p>{wallLabel(event.wallStart)}{end !== event.wallStart && ' ~ ' + wallLabel(end)}{event.allDay ? ' · 종일' : event.originalTimezone ? ' · ' + event.originalTimezone : ' · 현지 시각'}</p>
-  <p>원본 상태 · {statuses[event.status]}{event.location && ' · ' + event.location}</p>
+  <p>표시 상태 · {archiveCalendarDisplayStatus(event, today())}{event.location && ' · ' + event.location}</p>
   </>}
   <details open={expanded || undefined}><summary>{relationOnly ? '연결된 기록' : '일정 상세 보기'}</summary>
    {event.interestIds?.map((id, index) => <p key={id}><Link href={'/explore/interests?id=' + id}>연결된 관심사 {index + 1}</Link></p>)}
