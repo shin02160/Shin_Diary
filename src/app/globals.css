@@ -360,3 +360,8 @@
 .taste-universe details{margin-top:14px}
 .taste-quotes li.taste-more{padding:0;border:0;background:none}
 .taste-quotes li.taste-more button{text-align:start;overflow-wrap:anywhere}
+.taste-offered span{background:none;border:1px dashed var(--purple);font-weight:400;padding:0 2px 0 4px}
+.taste-offered span.taste-offer-label,.taste-offered span.taste-offer-reason{border:0;padding:0;font-size:12px;color:var(--muted)}
+.taste-offered button:first-child{min-height:32px;color:var(--purple);font-weight:700}
+.taste-universe .taste-hypothesis{border-style:dashed;border-color:var(--purple)}
+.taste-universe .taste-hypothesis p{margin:4px 0}

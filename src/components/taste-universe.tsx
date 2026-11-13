@@ -5,16 +5,19 @@ import { useEffect, useRef, useState } from 'react';
 import { dayLabel } from '@/lib/dates';
 import { api, SyncError } from '@/lib/notion-sync';
 import { attractionSentences, blockText, entryObservations, staleReviews, traitGroups, type ReviewStatus, type TasteObservation, type TasteReview } from '@/lib/taste-observations';
+import { analysisBatch, type AnalysisSentence, type TasteSuggestions } from '@/lib/taste-analysis';
 import type { Entry } from '@/lib/types';
 import type { WikiEntryBody } from '@/lib/wiki';
 
 const PAGE = 5;
-const bodiesKey = 'mlu.taste.bodies', reviewsKey = 'mlu.taste.reviews';
+const bodiesKey = 'mlu.taste.bodies', reviewsKey = 'mlu.taste.reviews', suggestionsKey = 'mlu.taste.suggestions';
 const areas = { Daily: '일상', Travel: '여행', Concert: '공연', Projects: '프로젝트' } as const;
 // Starting points only; any wording can be typed in.
 const seedTraits = ['공간성', '디테일', '색감', '분위기', '현장감', '무대 구성', '서사', '함께하는 경험', '낯선 장소 탐색', '일상 풍경', '맛', '새로운 시도', '휴식', '만들기'];
 type Bodies = Record<string, { updatedAt?: string; text: string }>;
 type Reviews = Record<string, TasteReview>;
+// AI suggestions wait here until the user takes or dismisses them; they never count as a confirmed taste on their own.
+type Suggestions = Partial<TasteSuggestions> & { dismissed?: string[] };
 
 function read<T extends object>(key: string): T {
  try {
@@ -32,6 +35,10 @@ export function TasteUniverse({ entries, loading }: { entries: Entry[]; loading:
  // What the last finished run left in the cache, and the pages it could not read; both decide what is still to read.
  const [saved, setSaved] = useState<Bodies>(() => read(bodiesKey));
  const [skipped, setSkipped] = useState<string[]>([]);
+ const [suggestions, setSuggestions] = useState<Suggestions>(() => read(suggestionsKey));
+ const [ai, setAi] = useState<{ enabled: boolean }>();
+ const [asking, setAsking] = useState(false);
+ const [aiNote, setAiNote] = useState('');
  const [area, setArea] = useState<keyof typeof areas | ''>('');
  const [limits, setLimits] = useState<Record<string, number>>({});
  const [editing, setEditing] = useState('');
@@ -81,6 +88,55 @@ export function TasteUniverse({ entries, loading }: { entries: Entry[]; loading:
  const stale = complete ? staleReviews(observations, reviews) : [];
  const known = [...new Set([...Object.values(reviews).flatMap(review => review.traits), ...seedTraits])];
  const years = [...new Set(visible.map(row => row.day.slice(0, 4)))];
+ const dismissed = new Set(suggestions.dismissed ?? []);
+ const byId = new Map(observations.map(row => [row.id, row]));
+ // Sentences not yet shown to the model, taken record by record so no single record fills the request.
+ const unasked = observations.filter(row => reviews[row.id]?.status !== 'rejected' && !suggestions.traits?.[row.id]);
+ const batch = analysisBatch(unasked);
+ const hypotheses = (suggestions.connections ?? []).flatMap(connection => {
+  const rows = connection.ids.flatMap(id => byId.get(id) ?? []).filter(row => reviews[row.id]?.status !== 'rejected');
+  return dismissed.has('connection:' + connection.trait) || new Set(rows.map(row => row.pageId)).size < 2 ? [] : [{ ...connection, rows }];
+ });
+
+ useEffect(() => {
+  let active = true;
+  void fetch('/api/taste-analysis', { cache: 'no-store' }).then(response => response.json())
+   .then(value => { if (active) setAi({ enabled: value.enabled === true }); })
+   .catch(() => { if (active) setAi({ enabled: false }); });
+  return () => { active = false; };
+ }, []);
+
+ function keep(next: Suggestions) {
+  try { localStorage.setItem(suggestionsKey, JSON.stringify(next)); } catch { /* The suggestions last for this visit. */ }
+  setSuggestions(next);
+ }
+ const dismiss = (key: string) => keep({ ...suggestions, dismissed: [...dismissed, key] });
+ async function ask() {
+  setAsking(true);
+  setAiNote('');
+  const sentences: AnalysisSentence[] = batch.map(row => ({ id: row.id, record: row.pageId, date: row.precision === 'month' ? row.day.slice(0, 7) : row.day,
+   area: areas[row.category], title: row.title.slice(0, 200), quote: row.quote }));
+  try {
+   const response = await fetch('/api/taste-analysis', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sentences, vocabulary: known.slice(0, 60) }) });
+   const result = await response.json();
+   if (!response.ok) throw new Error(result.error || '특성 제안을 받지 못했어요.');
+   const received = result as TasteSuggestions;
+   // A sentence the model had nothing to say about is remembered too, so it is not sent again.
+   keep({ ...suggestions, traits: { ...suggestions.traits, ...Object.fromEntries(sentences.map(row => [row.id, { traits: [] }])), ...received.traits },
+    connections: [...(suggestions.connections ?? []).filter(old => !received.connections.some(item => item.trait === old.trait)), ...received.connections] });
+   setAiNote('문장 ' + sentences.length + '개를 보냈고 ' + Object.keys(received.traits).length + '개에 특성 제안, 연결 가설 ' + received.connections.length + '건을 받았어요.');
+  } catch (failure) {
+   setAiNote(failure instanceof Error ? failure.message : '특성 제안을 받지 못했어요.');
+  } finally { setAsking(false); }
+ }
+ function confirmConnection(trait: string, rows: TasteObservation[]) {
+  save({ ...reviews, ...Object.fromEntries(rows.map(row => {
+   const current = reviews[row.id] ?? { traits: [], quote: row.quote, title: row.title, day: row.day };
+   return [row.id, { ...current, traits: [...new Set([...current.traits, trait])] }];
+  })) });
+  dismiss('connection:' + trait);
+ }
 
  function save(next: Reviews) {
   try {
@@ -128,6 +184,16 @@ export function TasteUniverse({ entries, loading }: { entries: Entry[]; loading:
    <p className="universe-meta">{when(row)} · {areas[row.category]} · <Link href={'/wiki?entry=' + encodeURIComponent(row.entryId)}>{row.title}</Link></p>
    {(review?.traits.length ?? 0) > 0 && <p className="taste-traits">{review!.traits.map(trait => <span key={trait}>{trait}
     <button type="button" aria-label={trait + ' 특성 떼기'} onClick={() => update(row, { traits: review!.traits.filter(value => value !== trait) })}>×</button></span>)}</p>}
+   {!hidden && (() => {
+    const offered = (suggestions.traits?.[row.id]?.traits ?? []).filter(trait => !review?.traits.includes(trait) && !dismissed.has('trait:' + row.id + ':' + trait));
+    return offered.length > 0 && <p className="taste-traits taste-offered"><span className="taste-offer-label">AI 제안</span>
+     {offered.map(trait => <span key={trait}>
+      <button type="button" onClick={() => update(row, { traits: [...(review?.traits ?? []), trait] })}>＋ {trait}</button>
+      <button type="button" aria-label={trait + ' 제안 지우기'} onClick={() => dismiss('trait:' + row.id + ':' + trait)}>×</button>
+     </span>)}
+     {suggestions.traits?.[row.id]?.reason && <span className="taste-offer-reason">근거 · {suggestions.traits[row.id].reason}</span>}
+    </p>;
+   })()}
    {hidden ? <button className="button" type="button" onClick={() => decide(row, 'rejected')}>다시 보이기</button> : <div className="form-actions">
     <button className="button" type="button" aria-pressed={review?.status === 'confirmed'} onClick={() => decide(row, 'confirmed')}>맞아요</button>
     <button className="button" type="button" onClick={() => decide(row, 'rejected')}>아니에요</button>
@@ -155,6 +221,33 @@ export function TasteUniverse({ entries, loading }: { entries: Entry[]; loading:
    <p className="universe-meta">문장 {rows.length}개 · {categories.map(category => areas[category]).join(', ')}{categories.length > 1 && ' · 여러 영역에서 반복'}</p>
    <ul>{rows.slice(0, 3).map(row => <li key={row.id}>“{row.quote}” <Link href={'/wiki?entry=' + encodeURIComponent(row.entryId)}>{when(row)}</Link></li>)}</ul>
   </article>)}</div> : <p>아직 붙인 특성이 없어요. 아래 문장에서 “특성 붙이기”를 누르면 여기에 모여요.</p>}
+
+  {hypotheses.length > 0 && <>
+   <h3>연결 가설</h3>
+   <p className="universe-meta">AI가 서로 다른 기록의 문장에서 찾은 공통점이에요. 확인하기 전에는 취향으로 세지 않아요.</p>
+   <div className="taste-clues">{hypotheses.map(({ trait, explanation, rows }) => <article key={trait} className="taste-topic taste-hypothesis">
+    <h4>{trait}</h4>
+    <p>{explanation}</p>
+    <ul>{rows.map(row => <li key={row.id}>“{row.quote}” <Link href={'/wiki?entry=' + encodeURIComponent(row.entryId)}>{when(row)}</Link></li>)}</ul>
+    <div className="form-actions">
+     <button className="button" type="button" onClick={() => confirmConnection(trait, rows)}>맞아요, 특성으로 붙이기</button>
+     <button className="button" type="button" onClick={() => dismiss('connection:' + trait)}>아니에요</button>
+    </div>
+   </article>)}</div>
+  </>}
+
+  <details>
+   <summary>AI로 특성 제안 받기</summary>
+   {!ai ? <p role="status">설정을 확인하는 중…</p> : !ai.enabled ? <p>AI 특성 제안이 설정되지 않았어요. 서버에 OPENAI_API_KEY와 OPENAI_TASTE_MODEL(또는 OPENAI_REVIEW_MODEL)을 넣으면 쓸 수 있어요.</p> :
+    !batch.length ? <p>제안받지 않은 문장이 없어요.</p> : <>
+    <p>버튼을 누르면 아직 제안받지 않은 문장 {unasked.length}개 중 {batch.length}개가 OpenAI로 전송돼요. 보내는 것은 문장, 날짜, 영역, 기록 제목뿐이고 일기 전문은 보내지 않아요.</p>
+    <ol>{batch.slice(0, 3).map(row => <li key={row.id}>{when(row)} · {areas[row.category]} · {row.title} — “{row.quote}”</li>)}</ol>
+    {batch.length > 3 && <p className="universe-meta">… 외 {batch.length - 3}개</p>}
+    <button className="button" type="button" disabled={asking || reading} onClick={() => void ask()}>OpenAI로 보내고 제안 받기</button>
+   </>}
+   {asking && <p role="status">제안을 받는 중…</p>}
+   {aiNote && <p role="status">{aiNote}</p>}
+  </details>
 
   <h3>끌림 문장 · {visible.length}개</h3>
   {loading && !observations.length ? <p role="status">기록을 불러오는 중…</p> : !observations.length ? <p>끌림을 직접 적은 문장을 아직 찾지 못했어요.</p> : <>
