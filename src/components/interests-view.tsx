@@ -6,6 +6,8 @@ import { archiveCalendarHref, type ArchiveCalendarEvent } from '@/lib/calendar/a
 import { api } from '@/lib/notion-sync';
 import { notionActivityUrl } from '@/lib/activity-view';
 import { timelineRows } from '@/lib/activity-timeline';
+import { interestMonths } from '@/lib/interest-months';
+import { today } from '@/lib/local-store';
 import { dayLabel } from '@/lib/dates';
 import type { Interest, InterestResult } from '@/lib/interests';
 import type { CatalogItem } from '@/lib/universe-catalog';
@@ -49,6 +51,7 @@ export function InterestsView({ items, loadingActivities, activitiesFailed, inte
  const statusOptions = [...new Set(interests.flatMap(item => item.status ? [item.status] : []))].sort((a, b) => a.localeCompare(b, 'ko'));
  const shown = interests.filter(item => (!category || item.category === category) && (!status || item.status === status));
  const { dated, undated } = timelineRows(interest ? relatedItems(interest, items) : []);
+ const months = interestMonths(dated.map(row => row.item), schedule?.events ?? [], today());
  const original = notionActivityUrl(interest?.id);
 
  return <div className="activity-timeline">
@@ -93,7 +96,22 @@ export function InterestsView({ items, loadingActivities, activitiesFailed, inte
    </div>
    {interest.memo && <section><h2>메모</h2><p className="preserve-lines">{interest.memo}</p></section>}
    <section><h2>좋아하는 이유</h2><p className="preserve-lines">{interest.why || '미기록'}</p></section>
-   <section><h2>관련 일정</h2>
+   <section className="resume-panel" aria-labelledby="interest-months">
+    <h2 id="interest-months">월별 활동</h2>
+    {(!schedule || loadingActivities) && <p role="status">월별 기록을 확인하는 중…</p>}
+    {(schedule?.failed || activitiesFailed || interest.moreRelations ||
+      interest.relatedPageIds.length > dated.length + undated.length) && <p role="status">조회할 수 있는 자료만 집계했어요.</p>}
+    {schedule && !loadingActivities && !months.length && <p>날짜가 기록된 활동이나 일정이 없어요.</p>}
+    {months.length > 0 && <>
+     <p>시작일 기준으로 집계합니다. 완료 수에는 완료 상태가 기록된 활동과 확인된 필라테스 레슨이 포함됩니다.</p>
+     <ul>{months.map(row => <li key={row.month}>
+      <strong>{row.month.slice(0, 4)}년 {Number(row.month.slice(5))}월</strong>
+      {' · 활동 ' + row.activities + '개 · 일정 ' + row.schedules + '개 · 확인된 완료 ' + row.completed + '회'}
+     </li>)}</ul>
+     <p><a href="#interest-activities">활동 기록 보기</a> · <a href="#interest-schedule">일정 기록 보기</a></p>
+    </>}
+   </section>
+   <section id="interest-schedule"><h2>관련 일정</h2>
     {!schedule ? <p role="status">관련 일정을 불러오는 중…</p> : schedule.failed
      ? <p role="alert">관련 일정을 불러오지 못했어요.</p> : !schedule.events.length
      ? <p>연결된 일정이 없어요.</p> : <ul className="timeline-list">
@@ -103,7 +121,7 @@ export function InterestsView({ items, loadingActivities, activitiesFailed, inte
       </li>)}
      </ul>}
    </section>
-   <section><h2>관련 활동</h2>
+   <section id="interest-activities"><h2>관련 활동</h2>
     {loadingActivities ? <p role="status">활동을 불러오는 중…</p> : <>
      {dated.length + undated.length > 0 && <ul className="timeline-list">
       {[...dated.map(row => ({ item: row.item, day: row.day })), ...undated.map(item => ({ item, day: undefined }))].map(({ item, day }) => <li key={item.key} className={'universe-tone-' + item.category}>

@@ -257,3 +257,21 @@
 .wiki-archive .universe-wiki-recent span{overflow-wrap:anywhere;min-width:0}
 .wiki-record-date{display:block;color:var(--muted);font-weight:400}
 .wiki-entry-photo{width:100%;height:auto;object-fit:contain}
+
+.wiki-story{margin-block:16px 28px;font-size:1rem;line-height:1.8}
+.wiki-story-body{white-space:pre-wrap}
+.wiki-story-body :is(h2,h3,h4){scroll-margin-top:88px;margin-block:1.6em .45em;line-height:1.4}
+.wiki-story-body li{padding-inline-start:.15em}
+.wiki-story-body :is(ol,ul){padding-inline-start:1.55em}
+.wiki-story-body hr{margin-block:1.5em;border:0;border-top:1px solid var(--line)}
+.wiki-story-body figure{margin-inline:0}
+.wiki-story-body img{max-width:100%;height:auto;border-radius:12px}
+.wiki-story-meta,.wiki-story-body figcaption{font-size:.875rem;color:var(--muted)}
+.wiki-story-callout{margin-block:16px;padding:12px 16px;border-radius:12px;background:var(--lavender)}
+.wiki-story-callout ol{padding-inline-start:1.25em;margin-block:4px 0}
+.wiki-record-search{display:block;width:100%;padding:10px 12px;margin-block:6px 10px;border:1px solid var(--line);border-radius:12px;font:inherit;color:inherit;background:var(--surface, white)}
+
+.timeline-comparison{margin-block-start:12px}
+.timeline-comparison table{width:100%;border-collapse:collapse;table-layout:fixed}
+.timeline-comparison :is(th,td){padding:8px 4px;text-align:start;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+.timeline-comparison button{font:inherit;text-align:start;min-height:44px}
