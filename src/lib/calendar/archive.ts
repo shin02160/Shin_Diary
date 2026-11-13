@@ -33,3 +33,11 @@ export function archiveCalendarOverlaps(event: ArchiveCalendarEvent, from: strin
 export function archiveCalendarHref(event: ArchiveCalendarEvent) {
  return '/calendar?date=' + event.wallStart.slice(0, 10) + '&event=' + event.pageId + '#event-' + event.pageId;
 }
+
+/** A calendar's date-derived display state; not proof of attendance. */
+export function archiveCalendarDisplayStatus(event: ArchiveCalendarEvent, currentDay: string) {
+ if (event.status === 'cancelled') return '취소';
+ if (archiveCalendarEndDay(event) < currentDay) return '완료';
+ if (event.wallStart.slice(0, 10) > currentDay) return '예정';
+ return event.status === 'tentative' ? '미확정' : event.status === 'confirmed' ? '확정' : '상태 미확인';
+}
