@@ -142,6 +142,8 @@ export function InterestsView({ items, loadingActivities, activitiesFailed, inte
     <p className="universe-meta">{interest.startedAt ? '기록된 시작 ' + dayLabel(interest.startedAt) : '시작 시기 미기록'}
      {interest.endedAt && ' · 종료 ' + dayLabel(interest.endedAt)}{interest.lastReviewedAt && ' · 최근 검토 ' + dayLabel(interest.lastReviewedAt)}</p>
     {interest.tags.length > 0 && <p className="universe-meta">{interest.tags.map(tag => '#' + tag).join(' · ')}</p>}
+    <p className="universe-meta">{interest.aliases?.length ? '별칭 · ' + interest.aliases.join(', ')
+     : '별칭 미등록 · Notion 관심사에 ‘별칭’ 속성을 넣으면 다른 표기(예: 한글 이름, 공연명)로 쓴 기록도 찾아요.'}</p>
    </div>
    <section><h2>좋아하는 이유</h2><p className="preserve-lines">{interest.why || '미기록'}</p></section>
    {interest.memo && <section><h2>메모</h2><p className="preserve-lines">{interest.memo}</p></section>}

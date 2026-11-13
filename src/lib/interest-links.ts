@@ -3,12 +3,15 @@ import { timelineCalendarMatches, timelineSourceLinks } from './activity-timelin
 import type { Interest } from './interests.ts';
 import type { CatalogItem } from './universe-catalog.ts';
 
-// The names a subject goes by in titles and tags, lower-cased.
-export function interestTerms(name: string) {
- const normalized = name.normalize('NFKC').toLowerCase().trim();
- if (/n[.\s-]*flying|엔플라잉/.test(normalized)) return ['n.flying', 'nflying', 'n flying', '엔플라잉', '&con5'];
- if (/^(seventeen|세븐틴)$/.test(normalized)) return ['seventeen', '세븐틴'];
- return normalized.length >= 2 ? [normalized] : [];
+// The names a subject goes by in titles and tags, lower-cased: its own name, the same name without
+// punctuation ("N.Flying" is also written "Nflying"), and the aliases recorded for it in Notion.
+export function interestTerms(name: string, aliases: string[] = []) {
+ const terms = [name, ...aliases].flatMap(value => {
+  const text = value.normalize('NFKC').toLowerCase().trim();
+  const compact = text.replace(/[^a-z0-9가-힣]/g, '');
+  return [text, ...(compact.length >= 3 ? [compact] : [])];
+ });
+ return [...new Set(terms.filter(term => term.length >= 2))];
 }
 
 // Latin names must stand alone as a word; Korean names may sit inside a longer word.
@@ -26,7 +29,7 @@ export function interestLinks(interest: Interest, items: CatalogItem[], approved
  const pages = new Map(items.filter(item => item.originalUrl).map(item => [pageId(item), item]));
  const calendars = timelineCalendarMatches(items);
  const confirmed = new Set(approved);
- const terms = interestTerms(interest.name);
+ const terms = interestTerms(interest.name, interest.aliases);
  const matches = (value?: string) => matchesTerms(terms, value);
  const linked = items.flatMap(item => {
   const direct = item.interestIds.includes(interest.id) || (item.originalUrl && ids.has(pageId(item)));

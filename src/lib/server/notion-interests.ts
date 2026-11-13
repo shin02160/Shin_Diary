@@ -27,6 +27,12 @@ function safeCover(value?: string) {
  } catch { /* Use the default cover. */ }
 }
 
+// Other spellings of the subject, kept in Notion as a multi-select or as text separated by commas or lines.
+function readAliases(property?: NotionPage['properties'][string]) {
+ const names = property?.multi_select?.map(option => option.name) ?? readText(property).split(/[,\n]/);
+ return [...new Set(names.map(name => name.trim()).filter(name => name.length >= 2 && name.length <= 60))].slice(0, 30);
+}
+
 function mapInterest(page: InterestPage): Interest | undefined {
  if (page.object !== 'page' || page.archived || page.in_trash || !idPattern.test(page.id)) return;
  const p = page.properties;
@@ -49,6 +55,7 @@ function mapInterest(page: InterestPage): Interest | undefined {
   why: readText(p.WhyILikeIt).trim() || undefined,
   cover: safeCover(file?.file?.url ?? file?.external?.url ?? p.Cover?.url ?? undefined),
   tags: p.Tags?.multi_select?.map(tag => tag.name) ?? [],
+  aliases: readAliases(p['별칭'] ?? p.Aliases),
   relatedPageIds: [...new Set(relations.flatMap(property => property.relation ?? []).map(row => row.id).filter(id => idPattern.test(id)).map(normalize))],
   moreRelations: relations.some(property => property.has_more === true),
   relationsUnavailable: relations.length === 0,

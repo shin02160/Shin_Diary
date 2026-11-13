@@ -25,7 +25,7 @@ test('eras follow the subject that leads each year and describe only what the re
    show('p6', '2025-06-01', 'Nflying'), show('p7', '2025-08-01', 'Nflying'),
   ] },
  });
- const interests = [{ id: 'n', name: 'N.Flying', tags: [], relatedPageIds: [], moreRelations: false }];
+ const interests = [{ id: 'n', name: 'N.Flying', aliases: ['엔플라잉'], tags: [], relatedPageIds: [], moreRelations: false }];
  const eras = tasteEras(items, interests, '2026-11-13');
  assert.deepEqual(eras.map(era => [era.from, era.to, era.subjects.map(subject => subject.name + ':' + subject.days + (subject.firstSeen ? '*' : ''))]), [
   ['2022', '2023', ['DKZ:3*', '종형:1*', 'N.Flying:1*']],

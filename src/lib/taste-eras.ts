@@ -22,7 +22,7 @@ const bump = (counts: Map<string, number>, name?: string) => { if (name?.trim())
 // Consecutive years led by the same subject form one era. Counts are days with a record, not a measure of affection.
 export function tasteEras(items: CatalogItem[], interests: Interest[], today: string): TasteEra[] {
  const subjects = new Map<string, { name: string; interestId?: string; terms: string[] }>();
- for (const interest of interests) subjects.set(normalize(interest.name), { name: interest.name, interestId: interest.id, terms: interestTerms(interest.name) });
+ for (const interest of interests) subjects.set(normalize(interest.name), { name: interest.name, interestId: interest.id, terms: interestTerms(interest.name, interest.aliases) });
  const aliases = new Map([...subjects].flatMap(([key, subject]) => subject.terms.map(term => [normalize(term), key] as const)));
  const subjectKey = (artist: string) => {
   const key = normalize(artist);

@@ -20,10 +20,20 @@ test('interest discovery keeps artist evidence separate and combines explicit ca
   wallStart: '2026-10-31', wallEnd: '2026-11-01', allDay: true, sourceName: 'fixture', description: '', status: 'confirmed',
  }, Date.parse('2026-11-13'));
  const items = [...buildCatalog({ activities: [], entries }), calendar];
- const interest = { id: 'interest', name: 'N.Flying', tags: ['공연'], relatedPageIds: [], moreRelations: false };
+ const interest = { id: 'interest', name: 'N.Flying', aliases: ['엔플라잉', '&Con5'], tags: ['공연'], relatedPageIds: [], moreRelations: false };
  const links = interestLinks(interest, items, ['entry:concert']);
  assert.deepEqual(links.map(row => row.item.key).sort(), ['entry:concert', 'entry:review', 'entry:trip']);
  assert.equal(links.find(row => row.item.key === 'entry:concert')?.sources.length, 2);
  assert.equal(links.find(row => row.item.key === 'entry:concert')?.confirmed, true);
- assert.deepEqual(interestLinks({ ...interest, name: 'SEVENTEEN' }, items, []).map(row => row.item.key), ['entry:other']);
+ assert.deepEqual(interestLinks({ ...interest, name: 'SEVENTEEN', aliases: [] }, items, []).map(row => row.item.key), ['entry:other']);
+});
+
+test('subject names come from the record and its Notion aliases, never from a built-in list', async () => {
+ const { interestTerms, matchesTerms } = await import('../../src/lib/interest-links.ts');
+ assert.deepEqual(interestTerms('N.Flying'), ['n.flying', 'nflying']);
+ assert.deepEqual(interestTerms('N.Flying', ['엔플라잉', ' Nflying ']), ['n.flying', 'nflying', '엔플라잉']);
+ assert.equal(matchesTerms(interestTerms('N.Flying'), '엔플라잉 공연'), false);
+ assert.equal(matchesTerms(interestTerms('N.Flying', ['엔플라잉']), '엔플라잉 공연'), true);
+ assert.equal(matchesTerms(interestTerms('N.Flying'), '2026 Nflying LIVE'), true);
+ assert.equal(matchesTerms(interestTerms('SEVENTEEN'), '세븐틴 콘서트'), false);
 });

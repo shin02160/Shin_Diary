@@ -11,6 +11,7 @@ export interface Interest {
  why?: string;
  cover?: string;
  tags: string[];
+ aliases?: string[];
  relatedPageIds: string[];
  moreRelations: boolean;
  relationsUnavailable?: boolean;

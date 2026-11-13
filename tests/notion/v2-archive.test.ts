@@ -35,7 +35,7 @@ test('taste evidence spans years, honours browser decisions and excludes schedul
   occurredAt: { kind: 'date', date: date as `${number}-${number}-${number}` }, createdAt: date,
  })) });
  const calendar = calendarCatalogItem({ ...schedule, title: '엔플라잉' }, Date.parse('2026-11-13'));
- const interest = { id: 'n', name: 'N.Flying', tags: [], relatedPageIds: [], moreRelations: false };
+ const interest = { id: 'n', name: 'N.Flying', aliases: ['엔플라잉', '&Con5'], tags: [], relatedPageIds: [], moreRelations: false };
  const rows = tasteEvidence(interest, [...entries, calendar], '2026-11-13', ['entry:manual']);
  assert.deepEqual(rows.map(row => [row.item.sourcePageId, row.evidence, row.confirmed]),
   [['past', '제목', false], ['current', '제목', false], ['manual', '직접 승인', true]]);
