@@ -32,6 +32,7 @@ export interface Entry {
   content: string;
   title?: string;
   occurredAt: ExperienceDate;
+  occurredEnd?: LocalDate;
   createdAt: string;
   updatedAt?: string;
   activityId?: Activity['id'];

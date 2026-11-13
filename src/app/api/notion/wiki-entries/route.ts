@@ -38,7 +38,8 @@ export async function GET(request: Request) {
    const links = [...new Set(readText(p[sourceLinksProperty]).split(/\r?\n/).map(value => value.trim()).filter(Boolean))];
    const photo = readText(p['Diary Photo']);
    const key = readText(p['App ID']).trim() || page.id;
-   return [{ id: key, title: readText(p.Name), content: readText(p.Content), occurredAt, updatedAt: page.last_edited_time,
+   const end = p['Occurred At']?.date?.end?.slice(0, 10);
+   return [{ id: key, title: readText(p.Name), content: readText(p.Content), occurredAt, occurredEnd: end && parseActivityDate(end) ? end as Entry['occurredEnd'] : undefined, updatedAt: page.last_edited_time,
     createdAt: p['Created At']?.date?.start ?? page.created_time ?? '', category, tags: p.Tags?.multi_select?.map(tag => tag.name) ?? [],
     place: readText(p.Place) || undefined, photo: validPhoto(photo) ? photo : undefined, calendarEvent,
     sourceLinks: validSourceLinks(links) ? links : undefined,

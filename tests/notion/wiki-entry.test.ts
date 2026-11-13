@@ -60,10 +60,37 @@ test('entry reader signals partial data and distinguishes empty and failed bodie
    if (path.includes('start_cursor=')) throw new Error('upstream unavailable');
    return { results: [], has_more: next, next_cursor: next ? 'next' : undefined };
   });
-  assert.deepEqual(await readWikiEntry(api, source, page), { blocks: [], truncated: next, updatedAt: undefined });
+  assert.deepEqual(await readWikiEntry(api, source, page), { blocks: [], truncated: next, ...(next ? { partial: true } : {}), updatedAt: undefined });
  }
  await assert.rejects(readWikiEntry(transport(path => {
   if (path === '/pages/' + page) return allowedPage;
   throw new Error('upstream unavailable');
  }), source, page), /upstream unavailable/);
+});
+
+test('entry reader renders tables and link attachments and names the blocks it leaves out', async () => {
+ const table = 'e'.repeat(32);
+ const api = transport(path => {
+  if (path === '/pages/' + page) return allowedPage;
+  if (path.includes(table)) return { results: [
+   item('1'.repeat(32), 'table_row', { cells: [[{ plain_text: '곡' }], [{ plain_text: '메모' }]] }),
+   item('2'.repeat(32), 'table_row', { cells: [[{ plain_text: 'Blue Moon' }], []] }),
+  ], has_more: false };
+  return { results: [
+   item(table, 'table', { has_column_header: true }, true),
+   item('3'.repeat(32), 'video', { external: { url: 'https://example.com/clip' } }),
+   item('4'.repeat(32), 'embed', { url: 'javascript:alert(1)' }),
+   item('5'.repeat(32), 'equation', { expression: 'x' }),
+   item('6'.repeat(32), 'equation', { expression: 'y' }),
+   item('7'.repeat(32), 'table_of_contents', {}),
+  ], has_more: false };
+ });
+ const result = await readWikiEntry(api, source, page);
+ assert.deepEqual(result.blocks.map(block => block.kind), ['table', 'video']);
+ assert.equal(result.blocks[0].columnHeader, true);
+ assert.deepEqual(result.blocks[0].children.map(row => row.cells?.map(cell => cell.map(part => part.text).join(''))), [['곡', '메모'], ['Blue Moon', '']]);
+ assert.deepEqual(result.blocks[1].text, [{ text: '동영상 열기', url: 'https://example.com/clip' }]);
+ assert.deepEqual(result.omitted, { '임베드': 1, '수식': 2 });
+ assert.equal(result.truncated, true);
+ assert.equal(result.partial, undefined);
 });

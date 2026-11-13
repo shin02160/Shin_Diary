@@ -294,3 +294,9 @@
 .taste-moments li.taste-suggested{border-style:dashed;border-inline-start-style:solid}
 .taste-moments .universe-cover{max-height:220px;border-radius:10px;margin-block:6px}
 .taste-moments .universe-kind{text-decoration:none}
+.wiki-story-table{overflow-x:auto;margin-block:1em;white-space:normal}
+.wiki-story-table table{border-collapse:collapse;min-width:100%}
+.wiki-story-table :is(th,td){padding:6px 10px;border:1px solid var(--line);text-align:start;vertical-align:top}
+.wiki-story-table th{background:var(--lavender)}
+.wiki-story-table :is(th,td){word-break:keep-all}
+.wiki-story-body a{text-decoration:underline}

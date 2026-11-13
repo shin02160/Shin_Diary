@@ -53,6 +53,11 @@ function StoryBlock({ block }: { block: WikiBlock }) {
   case 'code': return <pre><code>{block.text.map(item => item.text).join('')}</code></pre>;
   case 'to_do': return <div><input type="checkbox" checked={block.checked ?? false} disabled aria-label={block.text.map(item => item.text).join('') || '할 일'}/> {text}{children}</div>;
   case 'toggle': return <details><summary>{text}</summary>{children}</details>;
+  case 'table': return <div className="wiki-story-table"><table><tbody>{block.children.map((row, index) => <tr key={row.id}>
+   {(row.cells ?? []).map((cell, column) => (block.columnHeader && index === 0) || (block.rowHeader && column === 0)
+    ? <th key={column} scope={block.columnHeader && index === 0 ? 'col' : 'row'}><RichText items={cell}/></th>
+    : <td key={column}><RichText items={cell}/></td>)}
+  </tr>)}</tbody></table></div>;
   case 'image': return block.image ? <StoryImage key={block.image} block={block} src={block.image}/> : null;
   case 'column': case 'column_list': case 'synced_block': return children;
   default: return <>{block.text.some(item => item.text.trim()) && <p>{text}</p>}{children}</>;
@@ -86,7 +91,7 @@ function notionPageLink(url?: string) {
 
 function linkedPages(blocks: WikiBlock[]): string[] {
  return blocks.flatMap(block => [
-  ...[...block.text, ...(block.caption ?? [])].flatMap(item => {
+  ...[...block.text, ...(block.caption ?? []), ...(block.cells ?? []).flat()].flatMap(item => {
    const id = item.page ?? notionPageLink(item.url);
    return id ? [id] : [];
   }),
@@ -112,6 +117,7 @@ export function WikiStory({ pageId, summary, records, monthRecords = [] }: {
  }, [pageId, attempt]);
  const retry = () => { setError(''); setBody(undefined); setAttempt(value => value + 1); };
  const blocks = body?.blocks ?? [];
+ const omitted = Object.entries(body?.omitted ?? {});
  const headings = storyHeadings(blocks);
  const relatedIds = new Set(linkedPages(blocks));
  const related = records.filter(record => record.pageId !== pageId &&
@@ -121,7 +127,10 @@ export function WikiStory({ pageId, summary, records, monthRecords = [] }: {
  return <>
   {!body && !error && <p role="status">Notion 본문을 불러오는 중…</p>}
   {(error || body?.truncated) && <div className="wiki-story-callout" role={error ? 'alert' : 'status'}>
-   <p>{error || '본문 일부를 표시할 수 없어요. 전체 내용은 Notion 원본에서 확인할 수 있어요.'}</p>
+   {error ? <p>{error}</p> : <>
+    {omitted.length > 0 && <p>앱에서 표시하지 못한 블록이 있어요: {omitted.map(([label, count]) => label + ' ' + count + '개').join(', ')}. 이 부분은 Notion 원본에서 확인할 수 있어요.</p>}
+    {(body?.partial || !omitted.length) && <p>본문이 길거나 일부를 불러오지 못해 끝까지 표시하지 못했어요. 전체 내용은 Notion 원본에서 확인할 수 있어요.</p>}
+   </>}
    <button className="button" type="button" onClick={retry}>본문 다시 불러오기</button>
   </div>}
   {headings.length > 1 && <nav className="wiki-story-callout" aria-label="본문 목차">

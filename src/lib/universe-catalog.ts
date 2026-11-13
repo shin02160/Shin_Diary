@@ -6,6 +6,7 @@ import { activityStatus, deduplicateActivities, notionActivityUrl, parseActivity
 import { dateKey } from './dates.ts';
 import type { NotionCollections } from './notion-collections.ts';
 import type { Activity, Entry } from './types.ts';
+import { entryEndDay } from './wiki-review.ts';
 
 export type CatalogKind = 'travel' | 'concert' | 'daily' | 'project' | 'uncategorized';
 export const catalogLabels: Record<CatalogKind, string> = { travel: '여행', concert: '공연', daily: '일상', project: '프로젝트', uncategorized: '미분류' };
@@ -60,7 +61,7 @@ export function buildCatalog(archive?: { activities: Activity[]; entries: Entry[
    startAt: entry.occurredAt, updatedAt: entry.updatedAt, status: 'unknown', originalUrl: notionActivityUrl(entry.notion?.pageId),
    key: 'entry:' + entry.id, kind: kinds[entry.category], type: '기록',
    title: entry.title || entry.content.trim().slice(0, 64) || (entry.photo ? '사진 기록' : '링크 기록'),
-   start: dateKey(entry.occurredAt), updated: entry.createdAt, location: entry.place, detail: entry.mood,
+   start: dateKey(entry.occurredAt), end: entryEndDay(entry), endAt: parseActivityDate(entryEndDay(entry)), updated: entry.createdAt, location: entry.place, detail: entry.mood,
    summary: entry.content, cover: entry.photo, entry, tags: entry.tags,
   });
  }

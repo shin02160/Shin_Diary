@@ -16,7 +16,7 @@ import { WikiStory } from './wiki-story';
 import { LocalDraft } from './local-draft';
 import { WikiGptReview } from './wiki-gpt-review';
 import { WikiReviewStats } from './wiki-review-stats';
-import { gptReviewId, monthRecords, reviewMonth } from '@/lib/wiki-review';
+import { entryEndDay, gptReviewId, monthRecords, reviewMonth } from '@/lib/wiki-review';
 
 const categories = [
  { key: 'daily', label: '일상 기록', entry: 'Daily', icon: 'daily' },
@@ -27,6 +27,10 @@ const categories = [
 
 function entryTitle(entry: Entry) {
  return entry.title?.trim() || entry.content.trim().split('\n')[0].slice(0, 72) || (entry.photo ? '사진 기록' : '기록');
+}
+function entryPeriod(entry: Entry) {
+ const end = entryEndDay(entry);
+ return dayLabel(dateKey(entry.occurredAt)) + (end ? ' ~ ' + dayLabel(end) : '');
 }
 const entryHref = (id: string) => '/wiki?entry=' + encodeURIComponent(id);
 
@@ -60,7 +64,7 @@ export function WikiArchive({ blocks = [], entryId, month }: { blocks?: WikiBloc
  </ul>;
  const entryList = (items: Entry[]) => <ul className="universe-wiki-recent">
   {items.map(entry => <li key={entry.id}><Link href={entryHref(entry.id)}><Icon name="file" size="small"/>
-   <span>{entryTitle(entry)}<small className="wiki-record-date">{dayLabel(dateKey(entry.occurredAt))}</small></span><Icon name="next" size="small"/></Link></li>)}
+   <span>{entryTitle(entry)}<small className="wiki-record-date">{entryPeriod(entry)}</small></span><Icon name="next" size="small"/></Link></li>)}
  </ul>;
  const loading = !data && !error;
  const feedback = loading ? <p role="status">기록을 불러오는 중…</p> : error ? <div>
@@ -117,7 +121,7 @@ export function WikiArchive({ blocks = [], entryId, month }: { blocks?: WikiBloc
    {feedback}
    {data && !entry && <p>이 기록을 찾을 수 없어요.</p>}
    {entry && <article className="wiki-story wiki-content">
-    <p className="wiki-story-meta">{categories.find(item => item.entry === entry.category)?.label} · {dayLabel(dateKey(entry.occurredAt))}{entry.place && ' · ' + entry.place}</p>
+    <p className="wiki-story-meta">{categories.find(item => item.entry === entry.category)?.label} · {entryPeriod(entry)}{entry.place && ' · ' + entry.place}</p>
     {entry.photo && <Image src={entry.photo} width={640} height={360} alt="기록 사진" unoptimized className="wiki-entry-photo"/>}
     {entry.calendarEvent && <p><Link className="text-link" href={'/calendar?date=' + entry.calendarEvent.date}>
      캘린더에서 {entry.calendarEvent.title} 보기
