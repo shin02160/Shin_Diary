@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { dayLabel } from '@/lib/dates';
-import { timelineDay, timelineRows, timelineYearCounts, timelineCalendarMatches } from '@/lib/activity-timeline';
+import { timelineDay, timelineRows, timelineYearCounts, timelineCalendarMatches, timelineSourceLinks } from '@/lib/activity-timeline';
 import { calendarCatalogItem, catalogLabels, type CatalogItem, type CatalogKind } from '@/lib/universe-catalog';
 import { deduplicateActivities, parseActivityDate, type ActivityStatus } from '@/lib/activity-view';
 import { type ArchiveCalendarEvent } from '@/lib/calendar/archive';
@@ -105,7 +105,7 @@ function CalendarCategory({ item, inferred }: { item: TimelineRecord; inferred: 
  </div>;
 }
 
-export function ActivityTimeline({ items: catalog, loading: catalogLoading, failed: catalogFailed }: { items: CatalogItem[]; loading: boolean; failed: boolean }) {
+export function ActivityTimeline({ items: catalog, loading: catalogLoading, failed: catalogFailed, stats }: { items: CatalogItem[]; loading: boolean; failed: boolean; stats: boolean }) {
  const [sources, setSources] = useState<{ items: TimelineRecord[]; errors: string[]; interests?: InterestResult }>();
  useEffect(() => {
   let active = true;
@@ -182,6 +182,8 @@ export function ActivityTimeline({ items: catalog, loading: catalogLoading, fail
  confirmedCategories.push({ label: '일상 · 운동', count: confirmed.filter(({ item }) => item.experienceVerified).length });
  const rankedCategories = confirmedCategories.filter(row => row.count > 0).sort((a, b) => b.count - a.count);
  const activityMonths = [...new Set([...elapsedSchedules, ...plannedSchedules, ...confirmed].map(row => row.month))].sort();
+ const itemsByPage = new Map(items.filter(item => item.originalUrl).map(item =>
+  [item.sourcePageId.replaceAll('-', '').toLowerCase(), item]));
  const highlighted = confirmed.slice(0, 3);
  const linkedStories = insightSources.filter(({ item }) => calendarMatches.has(item.key)).slice(0, 3);
  const annual = timelineYearCounts(items, today(), calendarMatches);
@@ -215,7 +217,55 @@ export function ActivityTimeline({ items: catalog, loading: catalogLoading, fail
 
  return <div className="activity-timeline">
   <div className="universe-heading"><h1>취향 연대기</h1><Link href="/explore">전체 탐색</Link></div>
-  <section className="resume-panel" aria-labelledby="timeline-insights">
+  <nav className="chips" aria-label="연대기 화면">
+   <Link href="/explore/timeline" aria-current={!stats ? 'page' : undefined}>취향과 기억</Link>
+   <Link href="/explore/timeline?view=activity" aria-current={stats ? 'page' : undefined}>활동 통계</Link>
+  </nav>
+  {!stats && <section className="resume-panel" aria-labelledby="taste-topics">
+   <h2 id="taste-topics">나의 관심사</h2>
+   {loading ? <p role="status">관심사를 불러오는 중…</p> : !sources?.interests ? <p role="alert">관심사를 불러오지 못했어요.</p> :
+    !sources.interests.interests.length ? <p>표시할 관심사가 없어요.</p> :
+    <ul className="timeline-list">{sources.interests.interests.map(interest => <li key={interest.id}>
+     <h3><Link href={'/explore/interests?id=' + encodeURIComponent(interest.id)}>{interest.name}</Link></h3>
+     <p className="universe-meta">{interest.startedAt ? '시작 ' + dayLabel(interest.startedAt) : '시작일 미기록'}</p>
+     {interest.why && <p className="universe-excerpt">{interest.why}</p>}
+     {interest.relatedPageIds.length === 0 && !pastRows.some(({ item }) => item.interestIds.includes(interest.id)) &&
+      <p className="universe-meta">연결된 기록이 없어요. 관심사 상세에서 원본을 확인할 수 있어요.</p>}
+    </li>)}</ul>}
+   <h3>대표 기억</h3>
+   {pastRows.some(({ item }) => item.entry) ? <ul className="timeline-list">
+    {pastRows.filter(({ item }) => item.entry).slice(0, 4).map(({ item, day }) => {
+     const linked = [...timelineSourceLinks(item, itemsByPage), ...(calendarMatches.get(item.key) ? [calendarMatches.get(item.key)!] : [])];
+     return <li key={item.key} className={'universe-tone-' + item.kind}>
+      <h4>{item.detailHref ? <Link href={item.detailHref}>{item.title}</Link> : item.title}</h4>
+      <p className="universe-meta">{dayLabel(day)} · {catalogLabels[item.kind]}</p>
+      {item.summary && <p className="universe-excerpt">{item.summary.trim().slice(0, 140)}{item.summary.trim().length > 140 && '…'}</p>}
+      {linked.length > 0 ? <ul aria-label="연결된 원본">{linked.map(target => <li key={target.key}>
+       <Link href={target.detailHref ?? target.originalUrl ?? '/explore'}>{target.title}</Link>
+      </li>)}</ul> : <p className="universe-meta">앱에서 확인된 연결이 없어요. {item.originalUrl &&
+       <a href={item.originalUrl} target="_blank" rel="noopener noreferrer">Notion 원본 확인</a>}</p>}
+     </li>;
+    })}
+   </ul> : !loading && <p>표시할 기억이 없어요.</p>}
+   <label>관심사 흐름 연도 <select value={selectedInsightYear} onChange={event => setInsightYear(event.target.value)}>
+    {years.map(value => <option key={value}>{value}</option>)}
+   </select></label>
+    <h3>관심사 흐름</h3>
+    {!sources?.interests ? <p role="status">관심사 자료를 불러오지 못했어요.</p> :
+     !interestTrends.length ? <p>이 해에 관심사와 연결된 지난 기록이 없어요.</p> : <>
+      <p>Notion에서 연결된 지난 기록의 월별 빈도입니다.</p>
+      {interestTrends.slice(0, 5).map(({ interest, label, months }) => <div key={interest.id}>
+       <h4><Link href={'/explore/interests?id=' + encodeURIComponent(interest.id)}>{interest.name}</Link></h4>
+       <p>{label}{months.length > 1 && ' · ' + months.length + '개월에 걸쳐 기록'}</p>
+       <ul>{months.map(([month, count]) => <li key={month}>{Number(month.slice(5))}월 {count}건{' '}
+        <meter aria-label={interest.name + ' ' + Number(month.slice(5)) + '월 연결 기록'} min={0}
+         max={Math.max(...months.map(([, total]) => total))} value={count}/>
+       </li>)}</ul>
+      </div>)}
+      {interestTrends.length > 5 && <Link href="/explore/interests">전체 관심사 보기</Link>}
+     </>}
+  </section>}
+  {stats && <section className="resume-panel" aria-labelledby="timeline-insights">
    <h2 id="timeline-insights">시기별 이야기</h2>
    {loading ? <p role="status">기록을 불러오는 중…</p> : <>
     {failed && <p role="status">조회할 수 있는 자료만 분석했어요.</p>}
@@ -242,20 +292,6 @@ export function ActivityTimeline({ items: catalog, loading: catalogLoading, fail
      <h3>기록으로 확인된 순간</h3>
      <ul className="timeline-list">{highlighted.map(({ item, day, end }) => <TimelineItem key={item.key} item={item} day={day} end={end}/>)}</ul>
     </> : <p>이 기간에는 완료 여부를 확인할 수 있는 경험 자료가 부족해요.</p>}
-    <h3>관심사 흐름</h3>
-    {!sources?.interests ? <p role="status">관심사 자료를 불러오지 못했어요.</p> :
-     !interestTrends.length ? <p>이 해에 관심사와 연결된 지난 기록이 없어요.</p> : <>
-      <p>Notion에서 연결된 지난 기록의 월별 빈도입니다.</p>
-      {interestTrends.slice(0, 5).map(({ interest, label, months }) => <div key={interest.id}>
-       <h4><Link href={'/explore/interests?id=' + encodeURIComponent(interest.id)}>{interest.name}</Link></h4>
-       <p>{label}{months.length > 1 && ' · ' + months.length + '개월에 걸쳐 기록'}</p>
-       <ul>{months.map(([month, count]) => <li key={month}>{Number(month.slice(5))}월 {count}건{' '}
-        <meter aria-label={interest.name + ' ' + Number(month.slice(5)) + '월 연결 기록'} min={0}
-         max={Math.max(...months.map(([, total]) => total))} value={count}/>
-       </li>)}</ul>
-      </div>)}
-      {interestTrends.length > 5 && <Link href="/explore/interests">전체 관심사 보기</Link>}
-     </>}
     {linkedStories.length > 0 && <>
      <h3>일정과 연결된 기록</h3>
      <ul className="timeline-list">{linkedStories.map(({ item, day, end }) => <TimelineItem key={item.key} item={item} day={day} end={end} calendar={calendarMatches.get(item.key)}/>)}</ul>
@@ -269,10 +305,10 @@ export function ActivityTimeline({ items: catalog, loading: catalogLoading, fail
      if (evidence) evidence.open = true;
     }}>근거 기록 보기</a>
    </>}
-  </section>
+  </section>}
   <details id="timeline-evidence" className="resume-panel">
    <summary>모든 원본 기록 보기</summary>
-  {!loading && <details className="resume-panel">
+  {stats && !loading && <details className="resume-panel">
    <summary>연도별 기록 비교</summary>
    {failed && <p role="status">일부 자료를 불러오지 못해 조회된 기록만 집계했어요.</p>}
    {earlierYear ? <>

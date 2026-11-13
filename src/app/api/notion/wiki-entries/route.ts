@@ -6,6 +6,7 @@ import { service } from '@/lib/server/service';
 import { parseActivityDate } from '@/lib/activity-view';
 import { isCalendarEntryLink } from '@/lib/calendar/entry-link';
 import { validPhoto } from '@/lib/entry-extras';
+import { sourceLinksProperty, validSourceLinks } from '@/lib/source-links';
 import type { Entry } from '@/lib/types';
 
 export async function GET(request: Request) {
@@ -27,11 +28,13 @@ export async function GET(request: Request) {
     const parsed: unknown = JSON.parse(readText(p['Calendar Event']));
     if (isCalendarEntryLink(parsed)) calendarEvent = parsed;
    } catch { /* The entry can be viewed without an optional calendar link. */ }
+   const links = [...new Set(readText(p[sourceLinksProperty]).split(/\r?\n/).map(value => value.trim()).filter(Boolean))];
    const photo = readText(p['Diary Photo']);
    const key = readText(p['App ID']).trim() || page.id;
    return [{ id: key, title: readText(p.Name), content: readText(p.Content), occurredAt, updatedAt: page.last_edited_time,
     createdAt: p['Created At']?.date?.start ?? page.created_time ?? '', category, tags: p.Tags?.multi_select?.map(tag => tag.name) ?? [],
     place: readText(p.Place) || undefined, photo: validPhoto(photo) ? photo : undefined, calendarEvent,
+    sourceLinks: validSourceLinks(links) ? links : undefined,
     notion: { pageId: page.id, hash: '' },
    }];
   });

@@ -21,12 +21,13 @@ const PAGE = 18;
 type Archive = { activities: Activity[]; entries: Entry[] };
 type Result<T> = { data: T } | { error: string };
 
-export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSearch = false, remote = true, interestId }: {
+export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSearch = false, remote = true, interestId, timelineStats = false }: {
  mode?: 'home' | 'explore' | 'wiki' | 'timeline' | 'interests';
  initialKind?: CatalogKind | 'all';
  focusSearch?: boolean;
  interestId?: string;
  remote?: boolean;
+ timelineStats?: boolean;
 }) {
  const local = useArchive();
  const preferences = useDashboardPreferences();
@@ -105,7 +106,7 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
  }
 
  return <>
-  {mode === 'interests' ? <InterestsView items={items} loadingActivities={loading} activitiesFailed={errors.length > 0} interestId={interestId}/> : mode === 'timeline' ? <ActivityTimeline items={items} loading={loading} failed={errors.length > 0}/> : mode === 'home' ? <>
+  {mode === 'interests' ? <InterestsView items={items} loadingActivities={loading} activitiesFailed={errors.length > 0} interestId={interestId}/> : mode === 'timeline' ? <ActivityTimeline stats={timelineStats} items={items} loading={loading} failed={errors.length > 0}/> : mode === 'home' ? <>
    <section className="universe-hero">
     <div className="universe-hero-copy">
      <h1>나의 모든 기록과 이야기,<br/><span>Youngshin&apos;s Universe</span></h1>

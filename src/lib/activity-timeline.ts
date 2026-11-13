@@ -47,3 +47,15 @@ export function timelineYearCounts(items: CatalogItem[], today: string, matches 
  }
  return years;
 }
+
+export function timelineSourceLinks(item: CatalogItem, itemsByPage: Map<string, CatalogItem>) {
+ const links = new Map<string, CatalogItem>();
+ for (const source of item.entry?.sourceLinks ?? []) {
+  const url = URL.parse(source);
+  if (!url || url.protocol !== 'https:' || !['notion.so', 'www.notion.so'].includes(url.hostname)) continue;
+  const pageId = /(?:^|[-/])([a-f0-9]{32}|[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})\/?$/i.exec(url.pathname)?.[1];
+  const target = pageId && itemsByPage.get(pageId.replaceAll('-', '').toLowerCase());
+  if (target && target.key !== item.key) links.set(target.key, target);
+ }
+ return [...links.values()];
+}
