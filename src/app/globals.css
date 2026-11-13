@@ -275,3 +275,4 @@
 .timeline-comparison table{width:100%;border-collapse:collapse;table-layout:fixed}
 .timeline-comparison :is(th,td){padding:8px 4px;text-align:start;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
 .timeline-comparison button{font:inherit;text-align:start;min-height:44px}
+.activity-timeline details select{max-width:100%}

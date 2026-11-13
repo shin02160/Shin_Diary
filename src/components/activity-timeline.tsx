@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { MemoryLinks } from './memory-links';
 import { useEffect, useState } from 'react';
 import { dayLabel } from '@/lib/dates';
 import { timelineDay, timelineRows, timelineYearCounts, timelineCalendarMatches, timelineSourceLinks } from '@/lib/activity-timeline';
@@ -184,6 +185,7 @@ export function ActivityTimeline({ items: catalog, loading: catalogLoading, fail
  const activityMonths = [...new Set([...elapsedSchedules, ...plannedSchedules, ...confirmed].map(row => row.month))].sort();
  const itemsByPage = new Map(items.filter(item => item.originalUrl).map(item =>
   [item.sourcePageId.replaceAll('-', '').toLowerCase(), item]));
+ const linkCandidates = items.filter(item => item.detailHref && ['trips', 'performances', 'calendar'].includes(item.sourceType));
  const highlighted = confirmed.slice(0, 3);
  const linkedStories = insightSources.filter(({ item }) => calendarMatches.has(item.key)).slice(0, 3);
  const annual = timelineYearCounts(items, today(), calendarMatches);
@@ -244,6 +246,7 @@ export function ActivityTimeline({ items: catalog, loading: catalogLoading, fail
        <Link href={target.detailHref ?? target.originalUrl ?? '/explore'}>{target.title}</Link>
       </li>)}</ul> : <p className="universe-meta">앱에서 확인된 연결이 없어요. {item.originalUrl &&
        <a href={item.originalUrl} target="_blank" rel="noopener noreferrer">Notion 원본 확인</a>}</p>}
+      <MemoryLinks item={item} linked={linked} candidates={linkCandidates}/>
      </li>;
     })}
    </ul> : !loading && <p>표시할 기억이 없어요.</p>}
