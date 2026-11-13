@@ -3,6 +3,7 @@ import { parseActivityDate } from '../activity-view.ts';
 import { archivePages } from './life-calendar.ts';
 import { AppError } from './config.ts';
 import { NotionError, type Transport } from './notion-client.ts';
+import { readRelation } from './notion-relations.ts';
 import { readText, type NotionPage } from './notion-mapping.ts';
 
 const idPattern = /^(?:[a-f0-9]{32}|[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})$/i;
@@ -12,7 +13,11 @@ interface InterestPage extends NotionPage {
  parent?: { type: string; data_source_id?: string };
 }
 interface PageList { results: InterestPage[]; has_more: boolean; next_cursor?: string }
-interface RelationList { results: { relation?: { id: string } }[]; has_more: boolean; next_cursor?: string }
+const recordRelations = ['관련 기록', '관련 활동', 'RelatedActivities'];
+
+function recordRelationNames(page: InterestPage) {
+ return recordRelations.filter(name => Array.isArray(page.properties[name]?.relation));
+}
 
 function safeCover(value?: string) {
  if (!value) return;
@@ -27,7 +32,7 @@ function mapInterest(page: InterestPage): Interest | undefined {
  const p = page.properties;
  const name = readText(p['주제'] ?? p.Name).trim();
  if (!name) return;
- const related = p.RelatedActivities;
+ const relations = recordRelationNames(page).map(name => p[name]);
  const startedAt = (p['date:기간 시작:start'] ?? p.StartedAt)?.date?.start?.slice(0, 10);
  const endedAt = p['date:기간 종료:start']?.date?.start?.slice(0, 10);
  const lastReviewedAt = p.LastReviewedAt?.date?.start?.slice(0, 10);
@@ -43,8 +48,8 @@ function mapInterest(page: InterestPage): Interest | undefined {
   why: readText(p.WhyILikeIt).trim() || undefined,
   cover: safeCover(file?.file?.url ?? file?.external?.url ?? p.Cover?.url ?? undefined),
   tags: p.Tags?.multi_select?.map(tag => tag.name) ?? [],
-  relatedPageIds: [...new Set((related?.relation ?? []).map(row => row.id).filter(id => idPattern.test(id)).map(normalize))],
-  moreRelations: related?.has_more === true,
+  relatedPageIds: [...new Set(relations.flatMap(property => property.relation ?? []).map(row => row.id).filter(id => idPattern.test(id)).map(normalize))],
+  moreRelations: relations.some(property => property.has_more === true),
  };
 }
 
@@ -65,19 +70,10 @@ export async function readInterests(api: Transport, sourceId?: string, interestI
   if (!interest || parent?.type !== 'data_source_id' || !parent.data_source_id || normalize(parent.data_source_id) !== normalize(source)) {
    throw new AppError(404, '관심사를 찾을 수 없습니다.');
   }
-  const propertyId = page.properties.RelatedActivities?.id;
-  if (interest.moreRelations && propertyId) {
-   const ids = new Set(interest.relatedPageIds);
-   let cursor: string | undefined;
-   for (let batch = 0; batch < 5; batch++) {
-    const data: RelationList = await api.call('/pages/' + interest.id + '/properties/' +
-     encodeURIComponent(decodeURIComponent(propertyId)) + '?page_size=100' + (cursor ? '&start_cursor=' + encodeURIComponent(cursor) : ''));
-    for (const row of data.results) if (row.relation?.id && idPattern.test(row.relation.id)) ids.add(normalize(row.relation.id));
-    interest.moreRelations = data.has_more;
-    if (!data.has_more || !data.next_cursor || data.next_cursor === cursor) break;
-    cursor = data.next_cursor;
-   }
-   interest.relatedPageIds = [...ids];
+  if (interest.moreRelations) {
+   const relations = await Promise.all(recordRelationNames(page).map(name => readRelation(api, page, name)));
+   interest.relatedPageIds = [...new Set(relations.flat())];
+   interest.moreRelations = false;
   }
   if (activitiesSource && idPattern.test(activitiesSource)) {
    const schema = await api.call<{ properties: Record<string, { type: string; relation?: { data_source_id?: string } }> }>('/data_sources/' + activitiesSource);

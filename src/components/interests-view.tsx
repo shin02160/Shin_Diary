@@ -2,6 +2,9 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { interestLinks } from '@/lib/interest-links';
+import { calendarCatalogItem } from '@/lib/universe-catalog';
+import { reviewMonth } from '@/lib/wiki-review';
 import { archiveCalendarHref, type ArchiveCalendarEvent } from '@/lib/calendar/archive';
 import { api } from '@/lib/notion-sync';
 import { notionActivityUrl } from '@/lib/activity-view';
@@ -39,7 +42,7 @@ export function InterestsView({ items, loadingActivities, activitiesFailed, inte
    .then(value => { if (active) setResult(value); })
    .catch(failure => { if (active) setError(failure instanceof Error ? failure.message : '관심사를 불러오지 못했어요.'); });
   if (interestId) {
-   void api<{ events: ArchiveCalendarEvent[] }>('life-calendar?interest=' + encodeURIComponent(interestId))
+   void api<{ events: ArchiveCalendarEvent[] }>('life-calendar')
     .then(value => { if (active) setSchedule(value); })
     .catch(() => { if (active) setSchedule({ events: [], failed: true }); });
   }
@@ -53,7 +56,9 @@ export function InterestsView({ items, loadingActivities, activitiesFailed, inte
  const shown = interests.filter(item => (!category || item.category === category) && (!status || item.status === status));
  const { dated, undated } = timelineRows(interest ? relatedItems(interest, items) : []);
  const [now] = useState(Date.now);
- const months = interestMonths(dated.map(row => row.item), schedule?.events ?? [], today(), now);
+ const directSchedules = (schedule?.events ?? []).filter(event =>
+  interest && (event.interestIds?.includes(interest.id) || interest.relatedPageIds.includes(event.pageId)));
+ const months = interestMonths(dated.map(row => row.item), directSchedules, today(), now);
  const original = notionActivityUrl(interest?.id);
 
  return <div className="activity-timeline">
@@ -113,11 +118,14 @@ export function InterestsView({ items, loadingActivities, activitiesFailed, inte
      <p><a href="#interest-activities">활동 기록 보기</a> · <a href="#interest-schedule">일정 기록 보기</a></p>
     </>}
    </section>
+   <InterestConnections key={interest.id} interest={interest}
+    items={[...items, ...(schedule?.events ?? []).map(event => calendarCatalogItem(event, now))]}
+    loading={loadingActivities || !schedule} failed={activitiesFailed || Boolean(schedule?.failed)}/>
    <section id="interest-schedule"><h2>관련 일정</h2>
     {!schedule ? <p role="status">관련 일정을 불러오는 중…</p> : schedule.failed
-     ? <p role="alert">관련 일정을 불러오지 못했어요.</p> : !schedule.events.length
-     ? <p>연결된 일정이 없어요.</p> : <ul className="timeline-list">
-      {schedule.events.map(event => <li key={event.pageId}>
+     ? <p role="alert">관련 일정을 불러오지 못했어요.</p> : !directSchedules.length
+     ? <p>Notion 관계로 연결된 일정이 없어요.</p> : <ul className="timeline-list">
+      {directSchedules.map(event => <li key={event.pageId}>
        <h3><Link href={archiveCalendarHref(event)}>{event.title}</Link></h3>
        <p className="universe-meta">{dayLabel(event.wallStart.slice(0, 10))} · {scheduleLabels[event.scheduleState ?? deriveScheduleState(event, now)]}</p>
       </li>)}
@@ -131,11 +139,64 @@ export function InterestsView({ items, loadingActivities, activitiesFailed, inte
        <p className="universe-meta">{day ? dayLabel(day) : '날짜 미상'}</p>
       </li>)}
      </ul>}
-     {!interest.relatedPageIds.length && <p>연결된 활동이 없어요.</p>}
+     {!interest.relatedPageIds.length && <p>Notion 관계로 연결된 활동이 없어요.</p>}
      {interest.relatedPageIds.length > dated.length + undated.length && <p>일부 연결 활동은 앱에서 조회할 수 있어야 표시됩니다.</p>}
     </>}
     {interest.moreRelations && <p>일부 연결 활동만 불러왔어요.</p>}
    </section>
   </>}
  </div>;
+}
+
+const connectionGroups = ['공연', '여행', '일상', '회고', '기타'] as const;
+function connectionGroup(item: CatalogItem) {
+ if (item.entry && reviewMonth(item.entry)) return '회고';
+ return item.category === 'concert' ? '공연' : item.category === 'travel' ? '여행' :
+  item.category === 'daily' ? '일상' : '기타';
+}
+
+function InterestConnections({ interest, items, loading, failed }: {
+ interest: Interest; items: CatalogItem[]; loading: boolean; failed: boolean;
+}) {
+ const key = 'mlu.interest-links.' + interest.id;
+ const [approved, setApproved] = useState<string[]>(() => {
+  try {
+   const value: unknown = JSON.parse(localStorage.getItem(key) ?? '[]');
+   return Array.isArray(value) ? value.filter(id => typeof id === 'string') : [];
+  } catch { return []; }
+ });
+ const [error, setError] = useState(false);
+ const links = interestLinks(interest, items, approved);
+ function toggle(id: string) {
+  const next = approved.includes(id) ? approved.filter(value => value !== id) : [...approved, id];
+  try {
+   localStorage.setItem(key, JSON.stringify(next));
+   setApproved(next);
+   setError(false);
+  } catch { setError(true); }
+ }
+ return <section aria-labelledby="interest-records">
+  <h2 id="interest-records">관련 기록</h2>
+  <p>추천 근거를 확인한 뒤 이 브라우저에서 연결을 확정할 수 있어요.</p>
+  {loading && <p role="status">관련 기록을 찾는 중…</p>}
+  {failed && <p role="status">조회할 수 있는 자료에서 찾은 결과를 표시합니다.</p>}
+  {!loading && !failed && !links.length && <p>조회한 자료에서 관련 근거를 찾지 못했어요.</p>}
+  {error && <p role="alert">연결 선택을 저장하지 못했어요.</p>}
+  {connectionGroups.map(group => {
+   const rows = links.filter(row => connectionGroup(row.item) === group);
+   if (!rows.length) return null;
+   return <section key={group}><h3>{group} · {rows.length}건</h3>
+    <ul className="timeline-list">{rows.map(({ item, confirmed, evidence, sources }) => <li key={item.key}>
+     <h4><Link href={item.detailHref ?? item.originalUrl ?? '/explore'}>{item.title}</Link></h4>
+     <p className="universe-meta">{timelineRows([item]).dated[0]?.day ?? '날짜 미기록'} · {confirmed ? '확정 연결' : '추천 연결'} · {evidence}</p>
+     {sources.length > 1 && <ul aria-label="같은 경험의 원본">{sources.map(source => <li key={source.key}>
+      <Link href={source.detailHref ?? source.originalUrl ?? '/explore'}>{source.type} · {source.title}</Link>
+     </li>)}</ul>}
+     {evidence !== 'Notion 관계' && <button type="button" className="button" onClick={() => toggle(item.key)}>
+      {confirmed ? '확정 해제' : '연결 확정'}
+     </button>}
+    </li>)}</ul>
+   </section>;
+  })}
+ </section>;
 }
