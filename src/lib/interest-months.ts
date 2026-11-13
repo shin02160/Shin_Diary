@@ -1,9 +1,10 @@
 import { timelineDay } from './activity-timeline.ts';
 import { archiveCalendarEndDay, type ArchiveCalendarEvent } from './calendar/archive.ts';
+import { deriveScheduleState } from './calendar/schedule-state.ts';
 import { confirmedLesson } from './calendar/classification.ts';
 import type { CatalogItem } from './universe-catalog.ts';
 
-export function interestMonths(activities: CatalogItem[], events: ArchiveCalendarEvent[], today: string) {
+export function interestMonths(activities: CatalogItem[], events: ArchiveCalendarEvent[], today: string, now: number) {
  const months = new Map<string, { month: string; activities: number; schedules: number; completed: number }>();
  const seen = new Set<string>();
  const completed = new Set<string>();
@@ -32,7 +33,7 @@ export function interestMonths(activities: CatalogItem[], events: ArchiveCalenda
   seen.add(id);
   const row = monthOf(day);
   row.schedules++;
-  if (!confirmedLesson(event, today) || archiveCalendarEndDay(event) > today) continue;
+  if ((event.scheduleState ?? deriveScheduleState(event, now)) !== 'completed' || !confirmedLesson(event, today) || archiveCalendarEndDay(event) > today) continue;
   const lesson = 'lesson:' + day;
   if (completed.has(lesson)) continue;
   completed.add(lesson);

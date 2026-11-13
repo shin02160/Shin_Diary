@@ -1,3 +1,4 @@
+import { deriveScheduleState } from '../calendar/schedule-state.ts';
 import { archiveCalendarOverlaps, type ArchiveCalendarEvent } from '../calendar/archive.ts';
 import { parseActivityDate } from '../activity-view.ts';
 import type { Transport } from './notion-client.ts';
@@ -27,7 +28,7 @@ export async function archivePages(api: Transport, source: string, filter?: obje
  return pages;
 }
 
-export function archiveCalendarEvent(page: NotionPage): ArchiveCalendarEvent | undefined {
+export function archiveCalendarEvent(page: NotionPage, now = Date.now()): ArchiveCalendarEvent | undefined {
  const p = page.properties;
  const text = (key: string) => readText(p[key]).trim();
  const importKey = text('Import Key');
@@ -41,14 +42,17 @@ export function archiveCalendarEvent(page: NotionPage): ArchiveCalendarEvent | u
  if (text('Source Calendar ID')) {
   try { id = readCalendarPage(page).event.id; } catch { /* Keep the original Import Key as the read identity. */ }
  }
- const rawStatus = p.Status?.select?.name;
- return {
+ const rawStatus = p.Status?.select?.name ?? p.Status?.status?.name ?? undefined;
+ const sourceStatus = rawStatus === 'confirmed' || rawStatus === 'tentative' || rawStatus === 'cancelled' ? rawStatus : 'unknown';
+ const event: ArchiveCalendarEvent = {
   id, importKey, pageId: page.id.replaceAll('-', '').toLowerCase(), title, wallStart, wallEnd, allDay,
   sourceName: text('Source Calendar Name') || 'Notion',
   originalTimezone: text('Original Time Zone') || undefined,
   description: text('Description'), location: text('Location') || undefined,
-  status: rawStatus === 'confirmed' || rawStatus === 'tentative' || rawStatus === 'cancelled' ? rawStatus : 'unknown',
+  status: sourceStatus, rawStatus, sourceStatus, endExclusive: p['End Exclusive']?.checkbox,
+  endInstant: !allDay && /(?:Z|[+-]\d{2}:\d{2})$/i.test(p.End?.date?.start ?? '') ? p.End?.date?.start : undefined,
  };
+ return { ...event, scheduleState: deriveScheduleState(event, now) };
 }
 
 export async function readLifeCalendar(api: Transport, source: string, from = '', to = '', interest?: string) {
@@ -59,8 +63,9 @@ export async function readLifeCalendar(api: Transport, source: string, from = ''
  const pages = await archivePages(api, source, { property: 'Import Key', rich_text: { is_not_empty: true } });
  const events = new Map<string, ArchiveCalendarEvent>();
  let skipped = 0;
+ const now = Date.now();
  for (const page of pages) {
-  const event = archiveCalendarEvent(page);
+  const event = archiveCalendarEvent(page, now);
   if (!event) { skipped++; continue; }
   if (events.has(event.importKey) || !archiveCalendarOverlaps(event, from, to)) continue;
   event.interestIds = await readRelation(api, page, '관련 관심사');

@@ -10,7 +10,8 @@ import { RecordReminder } from './record-reminder';
 import { useDashboardPreferences } from '@/lib/dashboard-preferences';
 import { useArchive } from '@/lib/local-store';
 import { api } from '@/lib/notion-sync';
-import { buildCatalog, mergeCatalogEntries, catalogLabels, filterCatalog, type CatalogKind } from '@/lib/universe-catalog';
+import { buildCatalog, calendarCatalogItem, mergeCatalogEntries, catalogLabels, filterCatalog, type CatalogItem, type CatalogKind } from '@/lib/universe-catalog';
+import type { ArchiveCalendarEvent } from '@/lib/calendar/archive';
 import type { Activity, Entry } from '@/lib/types';
 import type { NotionCollections } from '@/lib/notion-collections';
 
@@ -30,6 +31,7 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
  const preferences = useDashboardPreferences();
  const [notionEntries, setNotionEntries] = useState<Result<{ entries: Entry[] }>>();
  const [archive, setArchive] = useState<Result<Archive>>();
+ const [schedules, setSchedules] = useState<Result<CatalogItem[]>>();
  const [collections, setCollections] = useState<Result<NotionCollections>>();
  const [attempt, setAttempt] = useState(0);
  const [kind, setKind] = useState(initialKind);
@@ -46,22 +48,31 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
     .catch(error => { if (alive) update({ error: error instanceof Error ? error.message : '기록을 불러오지 못했습니다.' }); });
   };
   load<{ entries: Entry[] }>('wiki-entries', setNotionEntries);
+  if (mode === 'explore') load<{ events: ArchiveCalendarEvent[] }>('life-calendar', result => {
+   if ('error' in result) setSchedules(result);
+   else {
+    const now = Date.now();
+    setSchedules({ data: result.data.events.map(event => calendarCatalogItem(event, now)) });
+   }
+  });
   if (remote) load<Archive>('archive', setArchive);
   load<NotionCollections>('collections', setCollections);
   return () => { alive = false; };
- }, [attempt, remote]);
+ }, [attempt, remote, mode]);
 
  const collectionData = collections && 'data' in collections ? collections.data : undefined;
  const archiveData = remote ? archive && 'data' in archive ? archive.data : undefined : local.ready ? local : undefined;
  const remoteEntries = notionEntries && 'data' in notionEntries ? notionEntries.data.entries : [];
- const items = buildCatalog({
+ const archiveItems = buildCatalog({
   activities: archiveData?.activities ?? [],
   entries: mergeCatalogEntries(remoteEntries, archiveData?.entries ?? []),
  }, collectionData);
- const loading = (remote ? !archive : !local.ready) || !collections || !notionEntries;
+ const items = schedules && 'data' in schedules ? [...archiveItems, ...schedules.data] : archiveItems;
+ const loading = (remote ? !archive : !local.ready) || !collections || !notionEntries || (mode === 'explore' && !schedules);
  const failedCollections = Object.entries(collectionData ?? {}).filter(([, value]) => value.state === 'failed');
  const sourceNames = { trips: '여행', performances: '공연' } as const;
  const errors = [
+  schedules && 'error' in schedules ? schedules.error : '',
   notionEntries && 'error' in notionEntries ? notionEntries.error : '',
   archive && 'error' in archive ? archive.error : '',
   collections && 'error' in collections ? collections.error : '',
@@ -83,6 +94,7 @@ export function NotionArchiveHome({ mode = 'home', initialKind = 'all', focusSea
  const hasTruncatedSource = Object.values(collectionData ?? {}).some(value => value.state === 'ready' && value.truncated);
 
  function reload() {
+  setSchedules(undefined);
   setArchive(undefined);
   setNotionEntries(undefined);
   setCollections(undefined);

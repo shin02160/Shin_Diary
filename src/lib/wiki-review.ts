@@ -1,4 +1,5 @@
 import { dateKey } from './dates.ts';
+import { deriveScheduleState } from './calendar/schedule-state.ts';
 import { confirmedLesson } from './calendar/classification.ts';
 import type { ArchiveCalendarEvent } from './calendar/archive.ts';
 import type { Entry } from './types.ts';
@@ -22,8 +23,8 @@ export function monthRecords(entries: Entry[], month: string) {
  });
 }
 
-export function monthLessonCount(events: ArchiveCalendarEvent[], month: string, today: string) {
- return new Set(events.filter(event => event.wallStart.startsWith(month + '-') && confirmedLesson(event, today))
+export function monthLessonCount(events: ArchiveCalendarEvent[], month: string, today: string, now = Date.now()) {
+ return new Set(events.filter(event => (event.scheduleState ?? deriveScheduleState(event, now)) === 'completed' && event.wallStart.startsWith(month + '-') && confirmedLesson(event, today))
   .map(event => event.wallStart.slice(0, 10))).size;
 }
 

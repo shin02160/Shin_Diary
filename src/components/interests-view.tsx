@@ -8,6 +8,7 @@ import { notionActivityUrl } from '@/lib/activity-view';
 import { timelineRows } from '@/lib/activity-timeline';
 import { interestMonths } from '@/lib/interest-months';
 import { today } from '@/lib/local-store';
+import { deriveScheduleState, scheduleLabels } from '@/lib/calendar/schedule-state';
 import { dayLabel } from '@/lib/dates';
 import type { Interest, InterestResult } from '@/lib/interests';
 import type { CatalogItem } from '@/lib/universe-catalog';
@@ -51,7 +52,8 @@ export function InterestsView({ items, loadingActivities, activitiesFailed, inte
  const statusOptions = [...new Set(interests.flatMap(item => item.status ? [item.status] : []))].sort((a, b) => a.localeCompare(b, 'ko'));
  const shown = interests.filter(item => (!category || item.category === category) && (!status || item.status === status));
  const { dated, undated } = timelineRows(interest ? relatedItems(interest, items) : []);
- const months = interestMonths(dated.map(row => row.item), schedule?.events ?? [], today());
+ const [now] = useState(Date.now);
+ const months = interestMonths(dated.map(row => row.item), schedule?.events ?? [], today(), now);
  const original = notionActivityUrl(interest?.id);
 
  return <div className="activity-timeline">
@@ -117,7 +119,7 @@ export function InterestsView({ items, loadingActivities, activitiesFailed, inte
      ? <p>연결된 일정이 없어요.</p> : <ul className="timeline-list">
       {schedule.events.map(event => <li key={event.pageId}>
        <h3><Link href={archiveCalendarHref(event)}>{event.title}</Link></h3>
-       <p className="universe-meta">{dayLabel(event.wallStart.slice(0, 10))}</p>
+       <p className="universe-meta">{dayLabel(event.wallStart.slice(0, 10))} · {scheduleLabels[event.scheduleState ?? deriveScheduleState(event, now)]}</p>
       </li>)}
      </ul>}
    </section>

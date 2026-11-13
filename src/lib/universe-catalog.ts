@@ -1,3 +1,6 @@
+import { archiveCalendarEndDay, archiveCalendarHref, type ArchiveCalendarEvent } from './calendar/archive.ts';
+import { calendarType } from './calendar/classification.ts';
+import { deriveScheduleState, scheduleActivityStatus, type ScheduleState } from './calendar/schedule-state.ts';
 import { activityStatus, deduplicateActivities, notionActivityUrl, parseActivityDate, type ActivityView } from './activity-view.ts';
 import { dateKey } from './dates.ts';
 import type { NotionCollections } from './notion-collections.ts';
@@ -7,6 +10,7 @@ export type CatalogKind = 'travel' | 'concert' | 'daily' | 'project' | 'uncatego
 export const catalogLabels: Record<CatalogKind, string> = { travel: '여행', concert: '공연', daily: '일상', project: '프로젝트', uncategorized: '미분류' };
 export interface CatalogItem extends ActivityView {
  key: string;
+ scheduleState?: ScheduleState;
  kind: CatalogKind;
  title: string;
  type: '여행' | '공연' | '기록' | '활동' | '일정' | '타임라인 이벤트';
@@ -76,4 +80,18 @@ export function filterCatalog(items: CatalogItem[], kind: CatalogKind | 'all', q
  return items.filter(item => (!year || (item.start || item.updated)?.startsWith(year)) &&
   (kind === 'all' || item.kind === kind) && (!tag || item.tags.includes(tag)) &&
   [item.title, item.location, item.detail, ...item.tags].join(' ').toLocaleLowerCase('ko-KR').includes(search));
+}
+
+export function calendarCatalogItem(event: ArchiveCalendarEvent, now: number): CatalogItem {
+ const state = event.scheduleState ?? deriveScheduleState(event, now);
+ const type = calendarType(event);
+ const kind = type === 'travel' || type === 'concert' ? type : type === 'work' ? 'project' :
+  type === 'exercise' || type === 'appointment' ? 'daily' : 'uncategorized';
+ return {
+  key: event.id, sourceType: 'calendar', sourcePageId: event.pageId, title: event.title, type: '일정',
+  kind, category: kind, interestIds: event.interestIds ?? [], tags: [], status: scheduleActivityStatus[state],
+  scheduleState: state, start: event.wallStart, end: archiveCalendarEndDay(event),
+  startAt: parseActivityDate(event.wallStart), endAt: parseActivityDate(archiveCalendarEndDay(event)),
+  originalUrl: notionActivityUrl(event.pageId), location: event.location, detailHref: archiveCalendarHref(event),
+ };
 }
