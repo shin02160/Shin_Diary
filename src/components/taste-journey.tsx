@@ -11,6 +11,8 @@ import { today } from '@/lib/local-store';
 import { catalogLabels, type CatalogItem } from '@/lib/universe-catalog';
 import { CollectionCover } from './notion-collections';
 import { TasteLanes } from './taste-lanes';
+import { TasteEras } from './taste-eras';
+import { tasteEras } from '@/lib/taste-eras';
 
 const PAGE = 6, HIGHLIGHTS = 4;
 const interestHref = (id: string) => '/explore/interests?id=' + encodeURIComponent(id);
@@ -59,17 +61,22 @@ export function TasteJourney({ items, interests, loading, errors }: {
 
  return <section className="resume-panel" aria-labelledby="taste-flow">
   <h2 id="taste-flow">취향의 흐름</h2>
-  <div className="universe-filter-row timeline-filters" role="group" aria-label="취향 연대기 필터">
-   <label>관심사 <select value={topic} onChange={event => setSelected(event.target.value)}>
-    <option value="">전체</option>
-    {interests?.map(interest => <option value={interest.id} key={interest.id}>{interest.name}</option>)}
-   </select></label>
-   <label><input type="checkbox" checked={confirmedOnly} onChange={event => setConfirmedOnly(event.target.checked)}/> 확정 연결만</label>
-  </div>
   {errors.map(message => <p role="alert" key={message}>{message} 조회된 자료만 표시해요.</p>)}
   {loading ? <p role="status">기록을 불러오는 중…</p> : !interests ? <p role="alert">관심사를 불러오지 못했어요.</p> : <>
    {interests.length === 0 && <p>등록된 관심사가 없어요.</p>}
-   {journeys.length > 0 && <TasteLanes lanes={[...found, ...lacking]} today={currentDay} interestHref={interestHref}/>}
+   <TasteEras eras={tasteEras(items, interests, currentDay)}/>
+   <h3 className="taste-year">관심사별로 보기</h3>
+   <div className="universe-filter-row timeline-filters" role="group" aria-label="취향 연대기 필터">
+    <label>관심사 <select value={topic} onChange={event => setSelected(event.target.value)}>
+     <option value="">전체</option>
+     {interests?.map(interest => <option value={interest.id} key={interest.id}>{interest.name}</option>)}
+    </select></label>
+    <label><input type="checkbox" checked={confirmedOnly} onChange={event => setConfirmedOnly(event.target.checked)}/> 확정 연결만</label>
+   </div>
+   {journeys.length > 0 && <details>
+    <summary>관심사별 기록 분포</summary>
+    <TasteLanes lanes={[...found, ...lacking]} today={currentDay} interestHref={interestHref}/>
+   </details>}
    {all.length > 0 && <p className="universe-meta">날짜가 있는 기록 {dated}건 중 관심사와 이어지는 기록 {all.length}건 · {dayLabel(all[0].day)} ~ {dayLabel(all.at(-1)!.day)}. 점을 누르면 그 기록이 열려요. 일정만 있고 기록이 없는 항목은 <Link href="/report">활동 리포트</Link>에서 볼 수 있어요.</p>}
    {lacking.length > 0 && <p>{confirmedOnly ? '확정된 연결이 없는 관심사' : '이어지는 기록을 찾지 못한 관심사'} · {lacking.map((journey, index) => <span key={journey.interest.id}>
     {index > 0 && ', '}<Link className="text-link" href={interestHref(journey.interest.id)}>{journey.interest.name}</Link></span>)}. 관심사 상세에서 연결 후보를 확인할 수 있어요.</p>}

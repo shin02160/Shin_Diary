@@ -3,25 +3,31 @@ import { timelineCalendarMatches, timelineSourceLinks } from './activity-timelin
 import type { Interest } from './interests.ts';
 import type { CatalogItem } from './universe-catalog.ts';
 
+// The names a subject goes by in titles and tags, lower-cased.
+export function interestTerms(name: string) {
+ const normalized = name.normalize('NFKC').toLowerCase().trim();
+ if (/n[.\s-]*flying|엔플라잉/.test(normalized)) return ['n.flying', 'nflying', 'n flying', '엔플라잉', '&con5'];
+ if (/^(seventeen|세븐틴)$/.test(normalized)) return ['seventeen', '세븐틴'];
+ return normalized.length >= 2 ? [normalized] : [];
+}
+
+// Latin names must stand alone as a word; Korean names may sit inside a longer word.
+export function matchesTerms(terms: string[], value?: string) {
+ const text = value?.normalize('NFKC').toLowerCase() ?? '';
+ return terms.some(term => {
+  const escaped = term.replace(/[^a-z0-9가-힣 ]/gi, character => String.fromCharCode(92) + character);
+  return /^[a-z]/.test(term) ? new RegExp('(?:^|[^a-z0-9])' + escaped + '(?:$|[^a-z0-9])').test(text) : text.includes(term);
+ });
+}
+
 export function interestLinks(interest: Interest, items: CatalogItem[], approved: string[]) {
  const ids = new Set(interest.relatedPageIds);
  const pageId = (item: CatalogItem) => item.sourcePageId.replaceAll('-', '').toLowerCase();
  const pages = new Map(items.filter(item => item.originalUrl).map(item => [pageId(item), item]));
  const calendars = timelineCalendarMatches(items);
  const confirmed = new Set(approved);
- const terms = [interest.name].flatMap(value => {
-  const normalized = value.normalize('NFKC').toLowerCase().trim();
-  if (/n[.\s-]*flying|엔플라잉/.test(normalized)) return ['n.flying', 'nflying', 'n flying', '엔플라잉', '&con5'];
-  if (/^(seventeen|세븐틴)$/.test(normalized)) return ['seventeen', '세븐틴'];
-  return normalized.length >= 2 ? [normalized] : [];
- });
- function matches(value?: string) {
-  const text = value?.normalize('NFKC').toLowerCase() ?? '';
-  return terms.some(term => {
-   const escaped = term.replace(/[^a-z0-9가-힣 ]/gi, character => String.fromCharCode(92) + character);
-   return /^[a-z]/.test(term) ? new RegExp('(?:^|[^a-z0-9])' + escaped + '(?:$|[^a-z0-9])').test(text) : text.includes(term);
-  });
- }
+ const terms = interestTerms(interest.name);
+ const matches = (value?: string) => matchesTerms(terms, value);
  const linked = items.flatMap(item => {
   const direct = item.interestIds.includes(interest.id) || (item.originalUrl && ids.has(pageId(item)));
   const evidence = direct ? 'Notion 관계' : confirmed.has(item.key) ? '직접 승인' :
